@@ -1,0 +1,45 @@
+{
+  "name": "sol",
+  "version": "2.2.0",
+  "description": "Local-first, evidence-backed assistant runtime and MCP for OpenCode",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "sol": "dist/cli/index.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./plugin": "./dist/v2/plugin.js",
+    "./mcp": "./dist/v2/mcp.js"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "docs"
+  ],
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run build && npm test",
+    "install:opencode": "npm run build && node dist/cli/index.js install",
+    "uninstall:opencode": "node dist/cli/index.js uninstall"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "@opencode-ai/plugin": "1.18.30",
+    "@opencode-ai/sdk": "1.18.30",
+    "jsonc-parser": "^3.3.1",
+    "zod": "4.1.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "typescript": "^5.9.2",
+    "vitest": "^5.0.0",
+    "vite": "8.3.0",
+    "yaml": "^2.8.1"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}
