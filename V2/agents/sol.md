@@ -40,6 +40,7 @@ No adoptes estados legacy como índice actual, migres datos o repares automátic
 Usa el ID nativo exacto disponible. No añadas especialistas por cantidad ni invoques todos por defecto. Si falta el rol requerido, explica el límite sin simular una delegación.
 </specialist_catalog>
 <skill_routing>
+El workflow es conversacional: decide qué skill cargar según intención + estado + autorización y vuelve a evaluar tras cada respuesta o resultado. El usuario no necesita invocar comandos de fase. Los únicos comandos públicos de Sol son /sol-init, /sol-config y /sol-version; init/config requieren petición explícita. Conserva las skills new-project, onboard, discuss, plan, execute, verify, ship, status, recap y resume como guías seleccionables por Sol. Una skill cargada no concede autorización. Consulta las decisiones humanas necesarias y, resueltas estas, continúa el trabajo ya autorizado sin pedir al usuario otro comando ni una confirmación ritual.
 Carga la skill nativa por ID real cuando se solicite o sea materialmente útil, y solo referencias pertinentes; OpenCode lista metadatos, no carga automáticamente cuerpos ni archivos vecinos. Las skills son guía, no permisos, estado ni un pipeline.
 - sol-new-project / sol-onboard: comprender necesidad nueva o realidad existente sin adelantar arquitectura ni mapear de más.
 - sol-discuss / sol-discovery: aclarar grises, investigar hechos, preguntas y suficiencia adaptativas.

@@ -33,8 +33,8 @@ try{
   test('No operational Sol CLI remains in distribution',()=>{assert.equal(fs.existsSync(path.join(root,'bin/sol.mjs')),false);assert.equal(fs.existsSync(path.join(root,'bin/prepare.mjs')),false);for(const file of listFiles(root).filter(f=>/\.(mjs|md)$/.test(f)&&f!=='scripts/check.mjs')){const content=read(file);assert.doesNotMatch(content,/node\s+[^\n]*sol\.mjs|prepare\.mjs --root|CLI global con --root/);}});
   test('Core y plugin sin dependencias externas de resolución',()=>{const pkg=JSON.parse(read('package.json'));assert.equal(Object.keys(pkg.dependencies||{}).length,0);assert.equal(Object.keys(pkg.devDependencies||{}).length,0);for(const f of listFiles(path.join(root,'lib')).filter(x=>x.endsWith('.mjs')))for(const line of read('lib/'+f).split('\n').filter(x=>x.startsWith('import ')))assert.match(line,/from ['"](?:node:|\.\/|\.\.\/)/);const plugin=JSON.parse(read('plugins/opencode-v2/package.json'));assert.equal(Object.keys(plugin.dependencies||{}).length,0);assert.equal(plugin.exports['.'],'./index.ts');assert.doesNotMatch(read('plugins/opencode-v2/index.ts'),/from ["']@opencode\/plugin/);});
   test('Composición reproducible en memoria',()=>{const render=()=>Object.fromEntries([...composeNativeFiles({root})].map(([p,text])=>[p,sha256(text)]));assert.deepEqual(render(),render());});
-  test('Atajos nativos, skills y módulos runtime comparten un catálogo cerrado',()=>{
-    const expected=['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship','sol-status','sol-recap','sol-resume','sol-init','sol-config'];
+  test('Comandos administrativos y skills conversacionales mantienen catálogos separados',()=>{
+    const expected=['sol-init','sol-config'];
     assert.deepEqual(solCommandNames,expected);assert.deepEqual(Object.keys(solCommandSkills),expected);
     for(const [command,skill] of Object.entries(solCommandSkills)){assert.ok(solSkillNames.includes(skill),`${command} → ${skill}`);assert.ok(fs.existsSync(path.join(root,'skills',skill,'SKILL.md')),skill);}
     assert.ok(solSkillNames.includes('sol-discovery'));assert.ok(solSkillNames.includes('sol-integration-verification'));
@@ -45,7 +45,7 @@ try{
     assert.equal(solPermissionToolNames.includes(solShipAuthorizeToolName),true,'autorización incluida en catálogo de permisos');
     assert.equal(solToolPermissionEffect(solShipAuthorizeToolName),'ask');
     assert.equal(solToolPermissionEffect(solShipAuthorizeToolName,'subagent'),'deny');
-    for(const name of ['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship'])assert.match(read(`skills/${name}/SKILL.md`),/^---\n(?=[\s\S]*?\nslash: true\n)/);
+    for(const name of ['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship','sol-status','sol-recap','sol-resume']){assert.ok(solSkillNames.includes(name));assert.equal(Object.hasOwn(solCommandSkills,name),false);assert.match(read(`skills/${name}/SKILL.md`),/^---\n(?=[\s\S]*?\nslash: false\n)/);}
     assert.match(read('skills/sol-discovery/SKILL.md'),/^---\n(?=[\s\S]*?\nslash: false\n)/);
     assert.equal(Object.hasOwn(solCommandSkills,'sol-discovery'),false);
   });

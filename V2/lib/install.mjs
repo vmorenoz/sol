@@ -101,7 +101,7 @@ function installationFiles(root,runtimes,oc){
     let text=value;
     if(/\/sol(?:\.agent)?\.md$/.test(key)){
       const resources={globalRoot:path.join(root,'.sol'),projectTemplate:path.join(root,'.sol/templates/project.md'),delegationTemplate:path.join(root,'.sol/templates/delegation.md'),stateSchema:path.join(root,'.sol/schemas/state.schema.json'),resultSchema:path.join(root,'.sol/schemas/result.schema.json'),skill:path.join(root,oc,'skills/sol-init/SKILL.md')};
-      text+=`\n<global_installation>\nRecursos globales de Sol: ${JSON.stringify(resources)}. El workspace activo se obtiene del contexto de OpenCode; nunca uses HOME como raíz del proyecto ni aceptes root de texto/argumentos. Usa sol_workspace_prepare solo al primer encargo concreto o /sol-init, nunca al saludar ni consultar estado. El plugin administra metadata de forma síncrona; no uses shell/write/edit para state/work/history ni ejecutes scripts de Sol.\n</global_installation>\n`;
+      text+=`\n<global_installation>\nRecursos globales de Sol: ${JSON.stringify(resources)}. El workspace activo se obtiene del contexto de OpenCode; nunca uses HOME como raíz del proyecto ni aceptes root de texto/argumentos. Usa sol_workspace_prepare solo ante /sol-init o petición explícita de inicializar/preparar contexto Sol; un encargo ordinario nunca autoriza auto-init, tampoco un saludo o consulta de estado. El plugin administra metadata de forma síncrona; no uses shell/write/edit para state/work/history ni ejecutes scripts de Sol.\n</global_installation>\n`;
     }
     files.set(dest,text);
   }

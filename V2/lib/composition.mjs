@@ -5,16 +5,6 @@ import {listFiles} from './fs.mjs';
 
 const sourceRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export const solCommandSkills=Object.freeze({
-  'sol-new-project':'sol-new-project',
-  'sol-onboard':'sol-onboard',
-  'sol-discuss':'sol-discuss',
-  'sol-plan':'sol-plan',
-  'sol-execute':'sol-execute',
-  'sol-verify':'sol-verify',
-  'sol-ship':'sol-ship',
-  'sol-status':'sol-status',
-  'sol-recap':'sol-recap',
-  'sol-resume':'sol-resume',
   'sol-init':'sol-init',
   'sol-config':'sol-config',
 });
@@ -37,7 +27,7 @@ const OC=`<opencode_native_capabilities documentation_checked="2026-10-08" runti
 Sol está diseñado exclusivamente para OpenCode v2. Usa sus agentes primary/subagent, permissions, shell, skill y subagent. Delega con la herramienta nativa subagent (agent, description, prompt); OpenCode gestiona sesiones, concurrencia y ciclo de vida. Mantén las delegaciones visibles. No implementes un runtime paralelo, scheduler ni transporte entre hosts.
 Las herramientas sol_* son herramientas nativas registradas por el plugin. Su raíz se resuelve desde la ubicación de la sesión que las invoca, nunca desde un argumento del usuario/modelo. Úsalas para consultar y modificar metadata persistente de Sol; no escribas state.json, history.jsonl ni work.json con herramientas genéricas ni ejecutes un CLI de Sol. La salida legible de las herramientas basta para coordinar; los schemas JSON son contratos internos.
 sol_status muestra frentes paginados incluso cuando existe foco. sol_work_get permite seleccionar sección, página, alcance o itemId y no abre los documentos citados. sol_version distingue el payload cargado por esta instancia de la instalación actual. Una inspección de archivos o un test con fixtures no acredita que este plugin esté cargado en una sesión real.
-Las skills se cargan con skill y los comandos Sol son dispatchers nativos. Respeta las aprobaciones del usuario y del host. No alteres modelos, configuración, MCP ni permisos globales por iniciativa propia. Ante petición explícita, Sol principal puede usar sol-config para preferencias globales de modelos de agentes Sol y sol_artifacts_* para tracking local del repo activo; ambos guardados requieren preview, confirmación nueva y aprobación del host. No gestiones providers, credenciales, permisos, settings Git compartidos ni el modelo activo de la sesión. La administración de preferencias/tracking no autoriza staging, commits ni pushes; shipping expresamente solicitado usa sol-ship y su aprobación propia. No inicialices Git ni prometas cambios remotos sin autorización.
+Las skills de workflow se cargan con skill según intención, estado y autorización, sin comandos de fase. Solo sol-init y sol-config tienen dispatchers Markdown; sol-version es un comando diagnóstico nativo del plugin. Respeta las aprobaciones del usuario y del host. No alteres modelos, configuración, MCP ni permisos globales por iniciativa propia. Ante petición explícita, Sol principal puede usar sol-config para preferencias globales de modelos de agentes Sol y sol_artifacts_* para tracking local del repo activo; ambos guardados requieren preview, confirmación nueva y aprobación del host. No gestiones providers, credenciales, permisos, settings Git compartidos ni el modelo activo de la sesión. La administración de preferencias/tracking no autoriza staging, commits ni pushes; shipping expresamente solicitado usa sol-ship y su aprobación propia. No inicialices Git ni prometas cambios remotos sin autorización.
 </opencode_native_capabilities>`;
 
 const frontmatter=o=>'---\n'+Object.entries(o).map(([k,v])=>`${k}: ${JSON.stringify(v)}`).join('\n')+'\n---\n\n';

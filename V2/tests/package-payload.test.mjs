@@ -42,7 +42,8 @@ test('tarball aislado instala sus recursos y ejerce el plugin sobre dos raíces 
   for(const relative of packagedSkills)assert.ok(fs.existsSync(path.join(home,'.config/opencode/skills',relative)),`falta skill/recurso instalado ${relative}`);
   for(const relative of ['contracts.mjs','artifacts.mjs','work-mutations.mjs','schema.mjs','fs.mjs','shipping.mjs','shipping-snapshot.mjs','shipping-authority.mjs'])assert.ok(fs.existsSync(path.join(home,'.sol/lib',relative)),relative);
   for(const relative of filesUnder(path.join(packageRoot,'schemas')))assert.ok(fs.existsSync(path.join(home,'.sol/schemas',relative)),relative);
-  for(const command of ['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship'])assert.ok(fs.existsSync(path.join(home,`.config/opencode/commands/${command}.md`)),command);
+  for(const command of ['sol-init','sol-config'])assert.ok(fs.existsSync(path.join(home,`.config/opencode/commands/${command}.md`)),command);
+  for(const skill of ['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship','sol-status','sol-recap','sol-resume']){assert.ok(fs.existsSync(path.join(home,`.config/opencode/skills/${skill}/SKILL.md`)),skill);assert.equal(fs.existsSync(path.join(home,`.config/opencode/commands/${skill}.md`)),false,skill);}
 
   const projectA=path.join(sandbox,'project-a'),projectB=path.join(sandbox,'project-b');
   fs.mkdirSync(projectA);fs.mkdirSync(projectB);

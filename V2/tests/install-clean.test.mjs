@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {install} from '../lib/install.mjs';
+import {install,VERSION} from '../lib/install.mjs';
 import {sha256} from '../lib/fs.mjs';
 import {parseJSONC} from '../lib/jsonc.mjs';
 import {temp} from './helpers.mjs';
@@ -24,7 +24,7 @@ test('clean upgrade removes only owned stale payload, merges complementary confi
   const jsonc='{// keep JSONC comment\n"mcp":{"outside":{"url":"https://example.test"}},"provider":{"b":{"name":"Other"}}}';
   put(home,`${oc}/opencode.json`,json);put(home,`${oc}/opencode.jsonc`,jsonc);
   const preview=install({...options(home),dryRun:true});assert.ok(preview.removals.includes(stale));assert.equal(fs.readFileSync(path.join(home,`${oc}/opencode.json`),'utf8'),json);
-  const result=install(options(home));assert.equal(result.version,'2.1.0');assert.equal(result.buildInfo.buildHash,initial.buildInfo.buildHash);
+  const result=install(options(home));assert.equal(result.version,VERSION);assert.equal(result.buildInfo.buildHash,initial.buildInfo.buildHash);
   assert.equal(fs.existsSync(path.join(home,stale)),false);assert.doesNotMatch(fs.readFileSync(path.join(home,edited),'utf8'),/local prior edit/);
   assert.equal(fs.existsSync(path.join(home,`${oc}/opencode.json`)),false);
   const output=fs.readFileSync(path.join(home,`${oc}/opencode.jsonc`),'utf8'),config=parseJSONC(output);
@@ -35,8 +35,8 @@ test('clean upgrade removes only owned stale payload, merges complementary confi
   const version=await import(pathToFileURL(path.join(home,'.sol/lib/version.mjs')).href);
   const loaded=version.getSolVersionInfo();assert.equal(loaded.buildHash,result.buildInfo.buildHash);assert.equal(loaded.sourceCommit,null);
   assert.deepEqual(version.getInstalledSolVersionInfo({homeDir:home}),loaded);
-  const current=JSON.parse(fs.readFileSync(manifestPath));current.version='2.1.1';current.buildHash='f'.repeat(64);fs.writeFileSync(manifestPath,JSON.stringify(current));
-  assert.equal(version.getSolVersionInfo().version,'2.1.0');assert.equal(version.getInstalledSolVersionInfo({homeDir:home}).version,'2.1.1');
+  const current=JSON.parse(fs.readFileSync(manifestPath));current.version='99.0.0';current.buildHash='f'.repeat(64);fs.writeFileSync(manifestPath,JSON.stringify(current));
+  assert.equal(version.getSolVersionInfo().version,VERSION);assert.equal(version.getInstalledSolVersionInfo({homeDir:home}).version,'99.0.0');
   assert.equal(install(options(temp(t))).buildInfo.buildHash,loaded.buildHash,'build identity does not depend on HOME');
 });
 

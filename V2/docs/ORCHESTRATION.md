@@ -49,3 +49,10 @@ La entrega final resume resultados de todos los frentes, evidencia ejecutada/no 
 ## Ejemplos y verificación
 
 [Seis conversaciones guía](ORCHESTRATION-EXAMPLES.md) muestran el criterio esperado, incluidos follow-ups y límites. Son ejemplos escritos, no transcripciones ni pruebas ejecutadas. La revisión estática puede comprobar consistencia entre fuentes, composición y contratos; la calidad de diálogo, elección de roles y continuidad requiere evaluación conductual posterior, no una lista de frases presentes.
+
+
+## Selección conversacional del siguiente paso
+
+Sol decide qué skill cargar desde intención + estado + autorización, no desde una secuencia de comandos. Las diez skills de workflow permanecen disponibles al modelo sin slash: new-project, onboard, discuss, plan, execute, verify, ship, status, recap y resume. Solo /sol-init y /sol-config son dispatchers Markdown; /sol-version es diagnóstico nativo. Init/config siguen siendo explícitos y no hay auto-init por pedir trabajo.
+
+Happy path esperado (guía de comportamiento, no prueba live): el usuario pide implementar un cambio acotado y comprobarlo; Sol usa contexto suficiente o investiga lo verificable, pregunta únicamente una decisión humana material que falte, incorpora la respuesta, delega ejecución y verifica el resultado sin exigir «/sol-execute», «/sol-verify» ni «continúa». Si el usuario pidió solo un plan, entrega el plan sin implementarlo. «Qué queda» y «resume lo hecho» son lecturas; «retoma la implementación aprobada» conserva el objetivo y continúa solo el alcance vigente. Shipping requiere petición y autorización específicas. Un bloqueo dependiente no detiene frentes independientes ya autorizados.

@@ -1,8 +1,8 @@
 {
   "name": "sol",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
-  "description": "Tools semánticas y orquestación nativa para OpenCode v2; core local, sin runtime propio.",
+  "description": "Tools sem\u00e1nticas y orquestaci\u00f3n nativa para OpenCode v2; core local, sin runtime propio.",
   "type": "module",
   "engines": {
     "node": ">=22"

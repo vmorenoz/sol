@@ -37,18 +37,19 @@ Estos son agentes del **producto distribuido**. No son los agentes nativos de de
 
 ## Skills y comandos
 
-| Nombre | Tipo | Función |
-|---|---|---|
-| `sol-init` | skill invocable y `/sol-init` | Inicialización diferida/mapeo del workspace activo cuando se necesita contexto. |
-| `sol-status` | skill invocable y `/sol-status` | Snapshot de trabajos sin exploración ni mutación. |
-| `sol-resume` | skill invocable y `/sol-resume` | Retomar un Work existente con contraste del repositorio actual. |
-| `sol-recap` | skill invocable y `/sol-recap` | Resumen de cierres por período y snapshot abierto. |
-| `sol-integration-verification` | skill auxiliar, no invocable por usuario | Checklist de contratos, wiring, recorrido de errores y prueba de integración para QA/review. |
-| `sol-config` | skill y `/sol-config` | Wizard nativo de preferencias globales de modelos Sol (paso 1), tracking Local/Versionado (paso 2; Local sugerido si no hay modo previo) y preview/confirmación (paso 3). |
+Los únicos comandos públicos de Sol son `/sol-init`, `/sol-config` y `/sol-version`. Init y config son dispatchers Markdown que cargan sus skills y requieren una petición explícita; version es diagnóstico nativo del plugin, sin inferencia. Init solicita preparación persistente y tracking, nunca configuración de modelos. Config administra preferencias de modelos y tracking mediante preview/confirmación; no inicializa el workspace.
 
-La distribución actual añade `/sol-config` y `/sol-init`; el primero configura ambas preferencias en ese orden, el segundo solo tracking y nunca modelos. `sol-config` no implica que el runtime activo ya haya cargado una instalación posterior: después de instalar/actualizar, reinicia OpenCode según indique el instalador.
+Las diez skills de workflow se conservan y Sol las carga con la herramienta nativa `skill` según intención, estado y autorización:
+- `sol-new-project` y `sol-onboard`: necesidad nueva y contexto existente
+- `sol-discuss` y `sol-plan`: decisiones y plan; plan-only no autoriza implementar
+- `sol-execute` y `sol-verify`: implementación autorizada y evidencia
+- `sol-ship`: entrega externa expresamente solicitada y autorizada
+- `sol-status` y `sol-recap`: consultas de solo lectura
+- `sol-resume`: continuación solicitada sin reiniciar fases
 
-Los cuatro comandos son dispatchers nativos de una línea que cargan la skill correspondiente; no son scripts autónomos ni aceptan flags de shell. Los argumentos son texto natural tratado como datos.
+No se exponen como comandos de workflow ni se deshabilita su carga por el modelo. `sol-discovery` y `sol-integration-verification` siguen siendo guías auxiliares. El usuario conversa con Sol; no tiene que elegir una skill ni invocar el siguiente paso. Las skills no conceden autorización y no existe auto-init por encargo ordinario.
+
+En upgrades se retiran dispatchers obsoletos acreditados por el manifest de Sol, con respaldo recuperable. Comandos ajenos o compartidos se conservan; una colisión no acreditada se informa sin borrarla. Reinicia OpenCode después de actualizar para cargar los recursos nuevos.
 
 ## Schemas
 

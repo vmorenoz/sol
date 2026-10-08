@@ -19,7 +19,7 @@ test('cada atajo existe como recurso de conversación con alcance explícito',()
     assert.ok(body.length>300,`${id} parece solo un stub`);
     for(const line of frontmatter(body).split('\n')) if(line.trim()) assert.match(line,/^(name|description|slash):\s/,'frontmatter incluye clave no confirmada por OpenCode V2');
   }
-  for(const id of skills.slice(0,7)) assert.match(frontmatter(read(`skills/${id}/SKILL.md`)),/^slash: true$/m);
+  for(const id of skills.slice(0,7)) assert.match(frontmatter(read(`skills/${id}/SKILL.md`)),/^slash: false$/m);
   assert.match(frontmatter(read('skills/sol-discovery/SKILL.md')),/^slash: false$/m);
 });
 

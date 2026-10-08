@@ -1,11 +1,10 @@
 ---
 name: sol-resume
 description: Retomar un objetivo usando artefactos y el estado real del repositorio.
-user-invocable: true
-disable-model-invocation: true
+slash: false
 ---
 # sol-resume
-Esta skill es una entrada conversacional para Sol, no un nuevo agente ni un script autónomo. Solo actúa como LT si el agente principal efectivo es sol; de lo contrario indica que debe seleccionarse sol. Una skill no cambia por sí sola la identidad del agente.
+Sol carga esta skill según la intención de la conversación y el estado disponible; no requiere slash ni comando de workflow. Es una guía para Sol, no un nuevo agente ni un script autónomo. Solo actúa como LT si el agente principal efectivo es sol; de lo contrario indica que debe seleccionarse sol. Una skill no cambia por sí sola la identidad del agente.
 
 Usa `sol_status`, `sol_work_get` y, para cierres, `sol_history` sobre el workspace activo; nunca HOME. `sol_work_get` es un resumen acotado: usa section y offset/limit para criterios, tareas, discovery y evidencia, filtros taskId/criterionId para el alcance e itemId para detalle completo. No concluyas desde arrays truncados ni cargues work.json entero por defecto. Las tools no leen archivos citados: abre solo documentos/evidencias pertinentes cuando la conclusión lo necesite. Conserva el ID. Encarga al Explorador contrastar la base y los cambios reales pertinentes antes de repetir acciones; Sol no hace el levantamiento técnico. No reinicies fases ni delegues una investigación completa por ceremonia: determina el siguiente paso concreto desde el estado actual.
 
@@ -18,7 +17,7 @@ Usa `sol_status`, `sol_work_get` y, para cierres, `sol_history` sobre el workspa
 5. Conserva la intención persistida de Ship (scope, destino y preview) como contexto, no autorización activa. `sol_ship_preflight` vuelve a observar/previsualizar; si no se conserva la autorización privada ligada a root/sesión/Work/intent —por ejemplo tras nueva sesión— no reconstruyas “approved” desde `shipping.approval.record`, Work, recibos ni conversación histórica. Solicita consentimiento para la preview vigente y sigue `sol_ship_authorize` y los permisos/aprobaciones host actuales antes de cualquier efecto. No cambies destino/scope ni inventes payload.
 6. Resume en una nota breve: acuerdo vigente, qué cambió, bloqueos materiales aún abiertos y una siguiente acción concreta. No repitas preguntas confirmadas ni vuelvas a empezar discovery/plan/verify completas si solo una dependencia está afectada.
 
-El argumento es texto natural opcional con el ID de Work y, si hace falta, una indicación de continuidad, por ejemplo `work-checkout` o `work-checkout, retoma desde las pruebas`. Un Work cerrado solo se reabre ante petición explícita/motivo y con `sol_work_reopen(workId, expectedRevision, reason)` vigente. Sin argumento, retoma el foco solo si es inequívoco; de lo contrario pregunta cuál. No espera flags ni sintaxis de shell.
+La petición en conversación usa texto natural opcional con el ID de Work y, si hace falta, una indicación de continuidad, por ejemplo `work-checkout` o `work-checkout, retoma desde las pruebas`. Un Work cerrado solo se reabre ante petición explícita/motivo y con `sol_work_reopen(workId, expectedRevision, reason)` vigente. Sin más detalle, retoma el foco solo si es inequívoco; de lo contrario pregunta cuál. No espera flags ni sintaxis de shell.
 
 No crees un Work ni inicialices por no encontrar el solicitado. Confirma existencia con las tools. Si el usuario pide solo lectura o un plan, mantén el resultado efímero: no persistas cambios, no reabras ni delegues seguimiento formal. Una comprobación técnica solicitada puede ser lectura conversacional sin Work. Si el usuario autoriza continuar formalmente y falta contexto necesario, aplica `sol-init` solo según su activación explícita, conserva el objetivo/ID existente y no migres legacy automáticamente. Las respuestas/propuestas no se convierten en metadata hasta que la persona lo pida y la revisión vigente lo permita.
 

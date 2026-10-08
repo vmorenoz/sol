@@ -2,6 +2,7 @@ import os from "node:os"
 import path from "node:path"
 import fs from "node:fs"
 import { pathToFileURL } from "node:url"
+import { createVersionReader } from "./version-view.mjs"
 import { formatStatusPage, formatWorkView, pageBounds, workSections } from "./work-views.mjs"
 
 // Narrow structural surface from the official OpenCode v2 documentation (2026-10-08).
@@ -135,9 +136,7 @@ const publicWorkUpdateToolSchema = makePublicWorkUpdateSchema(workUpdateToolSche
 export default {
   id: "sol",
   async setup(ctx: OpenCodeV2Context) {
-    const { getSolVersionInfo, getInstalledSolVersionInfo } = await core("version.mjs")
-    const loadedVersion = Object.freeze({ ...getSolVersionInfo() })
-    const hostVersion = ctx.app?.version || "no disponible"
+    const readVersion = await createVersionReader(ctx.app?.version)
 
     const register = (editor: NativeToolEditor, name: string, description: string, input: unknown, run: (args: any, root: string, session?: NativeSession) => Promise<string>) => {
       editor.add({ name, description, input, async execute(args: unknown, context: NativeToolContext) {
@@ -162,15 +161,7 @@ export default {
     await ctx.tool.transform((editor: NativeToolEditor) => {
       // Version diagnosis is intentionally independent of workspace/session state.
       editor.add({ name: "sol_version", description: "Identifica el payload cargado por esta instancia y la instalación actual; indica si requiere recarga.", input: object({}, []), async execute() {
-        let installed
-        try { installed = getInstalledSolVersionInfo() }
-        catch (error) { return { content: `Sol cargado: ${loadedVersion.version || "no disponible"} · build ${loadedVersion.buildHash || "no disponible"}\nInstalación actual: no legible (${(error as Error).message}).\nreloadRequired: unknown · no se pudo comparar. OpenCode: ${hostVersion}.` } }
-        const keys = ["version", "buildHash", "sourceCommit", "baseCommit"]
-        const comparable = Boolean(installed && loadedVersion.buildHash && installed.buildHash)
-        const knownDifference = installed && ["version", "sourceCommit", "baseCommit"].some(key => loadedVersion[key] && installed[key] && loadedVersion[key] !== installed[key])
-        const reloadRequired = comparable ? keys.some(key => loadedVersion[key] !== installed[key]) : knownDifference ? true : null
-        const describe = (value: any) => value ? `${value.version || "no disponible"} · build ${value.buildHash || "no disponible"} · commit ${value.sourceCommit || "no verificado"} · base ${value.baseCommit || "no disponible"}` : "sin manifiesto verificable"
-        return { content: `Sol cargado por esta instancia: ${describe(loadedVersion)}\nSol instalado actualmente: ${describe(installed)}\nOpenCode informado por el host: ${hostVersion}\nreloadRequired: ${reloadRequired === null ? "unknown" : reloadRequired}${reloadRequired === true ? " · recarga/reinicia OpenCode para cargar la instalación actual" : reloadRequired === null ? " · no se puede acreditar igualdad de builds" : " · coincide el payload identificado"}\nLa invocación identifica esta instancia; no certifica otras sesiones ni una aceptación live completa.` }
+        return { content: readVersion() }
       } })
       register(editor, "sol_workspace_prepare", "Inicializa el espacio Sol del workspace activo; conserva cualquier dato existente.", object({}, []), async (_args, root) => {
         const { prepareWorkspace } = await core("workspace.mjs");

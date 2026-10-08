@@ -72,3 +72,8 @@ Actualizar archivos no prueba que OpenCode haya descartado su caché o cargado e
 ## Validación
 
 Las pruebas del instalador usan perfiles/HOME temporales, incluyendo dry-run sin efectos, reemplazo respaldado, migración legacy reconocida, conflictos y preservación de datos de proyecto. No se ejecutó el instalador contra el HOME real ni se probó OpenCode live en esta revisión de documentos; consulta [Validación](VALIDATION.md) para distinguir evidencia automatizada de aceptación nativa.
+
+
+### Actualización a workflow conversacional
+
+La composición instala únicamente los dispatchers Markdown `sol-init` y `sol-config`; `sol-version` se registra de forma nativa en el plugin. No se instalan comandos para new-project, onboard, discuss, plan, execute, verify, ship, status, recap ni resume: sus skills permanecen cargables por Sol durante la conversación. La actualización retira los dispatchers anteriores solo cuando su propiedad está acreditada en el manifest, conserva comandos ajenos y respalda los recursos retirados. Una colisión no acreditada bloquea la instalación sin borrarla. Pedir trabajo ordinario no inicializa automáticamente el contexto persistente.
