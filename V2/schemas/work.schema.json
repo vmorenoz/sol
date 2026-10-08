@@ -50,11 +50,15 @@
                 "type": "string",
                 "minLength": 1
               },
-              "verification": {
-                "type": "string",
-                "minLength": 1
-              },
-              "evidenceIds": {
+                "verification": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "contractRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "evidenceIds": {
                 "type": "array",
                 "items": {
                   "type": "string",
@@ -193,6 +197,13 @@
               "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
             },
             "minItems": 1
+          },
+          "kind": {
+            "enum": ["research", "exploration", "specification", "planning", "implementation", "verification", "delivery", "shipping"]
+          },
+          "contractRevision": {
+            "type": "integer",
+            "minimum": 1
           },
           "agent": {
             "anyOf": [
@@ -392,6 +403,14 @@
           "summary": {
             "type": "string",
             "minLength": 1
+          },
+          "contractBindings": {
+            "type": "object", "additionalProperties": false,
+            "properties": {
+              "schemaVersion": {"const": 1},
+              "criteria": {"type": "array", "maxItems": 100, "items": {"type": "object", "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}, "revision": {"type": "integer", "minimum": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}, "required": ["id", "revision", "sha256"]}},
+              "tasks": {"type": "array", "maxItems": 100, "items": {"type": "object", "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}, "revision": {"type": "integer", "minimum": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}, "required": ["id", "revision", "sha256"]}}
+            }, "required": ["schemaVersion", "criteria", "tasks"]
           }
         },
         "required": [
@@ -411,6 +430,114 @@
         ]
       },
       "minItems": 0
+    },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {"const": 1},
+        "contextLane": {"enum": ["existing-project", "greenfield", "project-in-existing-repo", "unknown"]},
+        "sources": {
+          "type": "array", "maxItems": 200,
+          "items": {"type": "object", "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "kind": {"enum": ["user_statement", "repository", "official_documentation", "existing_document", "runtime_observation", "test_observation", "other"]},
+              "ref": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "observedAt": {"type": "string", "format": "date-time"},
+              "version": {"type": "string", "minLength": 1, "maxLength": 300},
+              "path": {"type": "string", "minLength": 1, "maxLength": 1000},
+              "inspection": {"enum": ["found", "read", "contrasted", "stale", "unknown", "absent"]},
+              "inspectionProvenance": {"const": "caller_reported"},
+              "fileSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            }, "required": ["id", "kind", "ref", "observedAt"]
+          }
+        },
+        "claims": {
+          "type": "array", "maxItems": 200,
+          "items": {"type": "object", "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "kind": {"enum": ["fact", "hypothesis", "recommendation"]},
+              "statement": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "sourceIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}}
+            }, "required": ["id", "kind", "statement", "sourceIds"]
+          }
+        },
+        "assumptions": {
+          "type": "array", "maxItems": 100,
+          "items": {"type": "object", "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "statement": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "impact": {"enum": ["material", "non_material"]},
+              "validation": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "status": {"enum": ["open", "validated", "rejected"]},
+              "resolution": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "sourceIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}}
+            }, "required": ["id", "statement", "impact", "validation", "status", "sourceIds"]
+          }
+        },
+        "questions": {
+          "type": "array", "maxItems": 100,
+          "items": {"type": "object", "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "question": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "whyItMatters": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "impact": {"enum": ["material", "non_material"]},
+              "resolutionKind": {"enum": ["human_decision", "investigation"]},
+              "sourceIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
+              "options": {"type": "array", "maxItems": 8, "items": {"type": "object", "additionalProperties": false, "properties": {"id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}, "label": {"type": "string", "minLength": 1, "maxLength": 500}, "consequence": {"type": "string", "minLength": 1, "maxLength": 1000}}, "required": ["id", "label", "consequence"]}},
+              "recommendation": {"type": "object", "additionalProperties": false, "properties": {"optionId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}, "reason": {"type": "string", "minLength": 1, "maxLength": 1000}, "counterpremise": {"type": "string", "minLength": 1, "maxLength": 1000}}, "required": ["optionId", "reason", "counterpremise"]},
+              "answer": {"type": "object", "additionalProperties": false, "properties": {"text": {"type": "string", "minLength": 1, "maxLength": 2000}, "kind": {"enum": ["investigated", "user_reported", "existing_source"]}, "sourceIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}}, "reportedAt": {"type": "string", "format": "date-time"}, "decisionId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}}, "required": ["text", "kind", "sourceIds", "reportedAt"]}
+            }, "required": ["id", "question", "whyItMatters", "impact", "sourceIds"]
+          }
+        },
+        "decisions": {
+          "type": "array", "maxItems": 100,
+          "items": {"type": "object", "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "questionIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
+              "statement": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "rationale": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "status": {"enum": ["proposed", "confirmed", "superseded"]},
+              "confirmedBy": {"enum": ["user_reported", "project_owner_reported", "existing_source"]},
+              "confirmedAt": {"type": "string", "format": "date-time"},
+              "sourceIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
+              "supersedes": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "supersededBy": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "supersessionReason": {"type": "string", "minLength": 1, "maxLength": 1000},
+              "supersededFrom": {"enum": ["proposed", "confirmed"]}
+            }, "required": ["id", "questionIds", "statement", "status", "sourceIds"]
+          }
+        }
+      },
+      "required": ["schemaVersion", "contextLane", "sources", "claims", "assumptions", "questions", "decisions"]
+    },
+    "shipping": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "schemaVersion": {"const": 1},
+        "intents": {"type": "array", "maxItems": 50, "items": {"type": "object", "additionalProperties": false,
+          "properties": {
+            "schemaVersion": {"const": 1}, "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+            "sourceWorkRevision": {"type": "integer", "minimum": 1}, "createdAt": {"type": "string", "format": "date-time"},
+            "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+            "branch": {"type": "string", "minLength": 1, "maxLength": 300}, "remote": {"type": "string", "minLength": 1, "maxLength": 200}, "base": {"type": "string", "minLength": 1, "maxLength": 300},
+            "title": {"type": "string", "minLength": 1, "maxLength": 300}, "body": {"type": "string", "maxLength": 10000}, "commitMessage": {"type": "string", "minLength": 1, "maxLength": 1000},
+            "headSha": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}, "diffSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "contentSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "snapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "workContractSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+            "workScope": {"type": "array", "maxItems": 100, "items": {"type": "string", "minLength": 1}}, "expectedPaths": {"type": "array", "maxItems": 500, "items": {"type": "string", "minLength": 1}}, "evidenceIds": {"type": "array", "maxItems": 100, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}}, "includedCommitShas": {"type": "array", "maxItems": 100, "items": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}},
+            "actions": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"enum": ["create_commit", "push_branch", "create_pr"]}}, "completedActions": {"type": "array", "maxItems": 3, "items": {"enum": ["create_commit", "push_branch", "create_pr"]}}, "checkpointHeadSha": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}, "checkpointSnapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "status": {"enum": ["previewed", "approved", "invalidated", "completed", "cancelled"]},
+            "approval": {"type": "object", "additionalProperties": false, "properties": {"status": {"const": "user_reported"}, "approvedAt": {"type": "string", "format": "date-time"}, "snapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "actions": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"enum": ["create_commit", "push_branch", "create_pr"]}}}, "required": ["status", "approvedAt", "snapshotSha256", "actions"]},
+            "invalidationReason": {"type": "string", "minLength": 1, "maxLength": 1000}
+          }, "required": ["schemaVersion", "id", "sourceWorkRevision", "createdAt", "repository", "branch", "remote", "base", "title", "body", "commitMessage", "headSha", "diffSha256", "contentSha256", "snapshotSha256", "workContractSha256", "workScope", "expectedPaths", "evidenceIds", "includedCommitShas", "actions", "completedActions", "checkpointHeadSha", "checkpointSnapshotSha256", "status"]
+        }},
+        "receipts": {"type": "array", "maxItems": 150, "items": {"type": "object", "additionalProperties": false, "properties": {
+          "schemaVersion": {"const": 1}, "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}, "intentId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}, "observedAt": {"type": "string", "format": "date-time"}, "action": {"enum": ["create_commit", "push_branch", "create_pr"]}, "status": {"enum": ["succeeded", "failed", "blocked"]}, "exitCode": {"type": "integer", "minimum": -1, "maximum": 255}, "beforeHeadSha": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}, "afterHeadSha": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"}, "beforeSnapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "observedSnapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "contentSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "snapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "pushedBranch": {"type": "string", "minLength": 1, "maxLength": 300}, "prUrl": {"type": "string", "minLength": 1, "maxLength": 2000}, "summary": {"type": "string", "minLength": 1, "maxLength": 2000}
+        }, "required": ["schemaVersion", "id", "intentId", "observedAt", "action", "status", "beforeHeadSha", "afterHeadSha", "beforeSnapshotSha256", "observedSnapshotSha256", "contentSha256", "snapshotSha256", "summary"]}}
+      }, "required": ["schemaVersion", "intents", "receipts"]
     },
     "closure": {
       "anyOf": [

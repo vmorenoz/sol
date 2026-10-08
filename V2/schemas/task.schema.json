@@ -21,6 +21,10 @@
       },
       "minItems": 1
     },
+    "kind": {
+      "enum": ["research", "exploration", "specification", "planning", "implementation", "verification", "delivery", "shipping"]
+    },
+    "contractRevision": {"type": "integer", "minimum": 1},
     "agent": {
       "anyOf": [
         {

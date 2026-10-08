@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "kind": "conversational_evaluation_case",
+  "caseId": "multi-academy-fictitious-purchase",
+  "evaluationStatus": "not_retested",
+  "evidenceClass": "user_provided_transcript_summary",
+  "provenance": {
+    "basis": "Task owner's account of a two-turn controlled native-general Luna resource exercise and an independent review; not a raw transcript.",
+    "reviewReference": "ses_ef7134c76ffefLQ0PuLQwT37hx",
+    "productUnderTest": "Not installed Sol; this is not a product/runtime acceptance observation.",
+    "limitations": [
+      "T1 wording/options were summarized, not supplied verbatim; do not invent a transcript.",
+      "There is no observed third assistant turn or user answer to a role-assignment question.",
+      "The controlled exercise is not a repeatable LLM benchmark and did not test Sol installed in OpenCode."
+    ]
+  },
+  "case": {
+    "initialRequest": "Los alumnos compran y acceden al contenido. Target: academias en Shopify, todos los profesores viendo ventas. Horizonte: dos semanas.",
+    "observedTurns": [
+      {
+        "turn": "T1",
+        "assistantObservation": "Asked one academy vs independently operated academies and explained concrete consequences. Exact wording is unavailable.",
+        "userAnswer": [
+          "Son tres academias independientes y cada una cobra por su cuenta.",
+          "El piloto no mueve dinero; las facturas son solo para un comprador ficticio.",
+          "Cada profesor solo ve sus cursos y ventas.",
+          "El director ve toda su academia.",
+          "Los alumnos pueden reutilizar una cuenta en varias academias.",
+          "Los profesores publican directamente, sin aprobación administrativa."
+        ]
+      },
+      {
+        "turn": "T2",
+        "assistantObservation": "Correctly carried forward the three independent academies and did not ask who charges again. It then asked whether a non-charging purchase should confirm/give access or stop before granting access.",
+        "assistantQuestionQuote": "comprar sin cobro real significa confirmar/dar acceso o detener antes de concederlo?",
+        "reviewObservation": "Independent reviewer identified this as needless micro-confirmation: the initial request already says students buy and access content, and the answer says the pilot has fictitious invoices/no real money. A visible, reversible provisional assumption would preserve that intent without blocking."
+      }
+    ]
+  },
+  "desiredObligations": [
+    "Preserve and use all six user answers; do not ask again whether academies are independent, who charges, whether pilot money moves, who sees each sales scope, account reuse, or whether teachers publish directly.",
+    "For the no-real-payment pilot, carry the explicit buy-and-access intent forward as a visible provisional, easily correctable behavior; do not present this default as a separately confirmed decision or ask the user to ratify their already stated intent.",
+    "Do not silently decide who may assign teacher/director roles to an academy, whether assignment is invite-only or open signup, or how membership is authorized. This is a material tenant/trust-boundary/privacy decision if implementation depends on it; inspect relevant project evidence first, then ask the smallest explicit question if still unresolved.",
+    "Do not fabricate a third transcript turn or an answer to the unresolved role-assignment issue. The case specifies evaluation obligations, not a canonical product design."
+  ],
+  "materialityBoundary": {
+    "provisionalWhen": "Behavior is low-impact, reversible, and directly follows explicit user intent; state the default plainly and invite correction without requiring a response.",
+    "explicitDecisionWhen": [
+      "Money movement or other financial consequence",
+      "Security, privacy, cross-academy access, or role assignment",
+      "An authorization/permission boundary",
+      "A material scope contradiction or irreversible external action"
+    ],
+    "researchBeforeQuestion": "Verify technical facts and inspect relevant existing rules before asking the user; facts found in accessible sources are not user-preference questions."
+  },
+  "counterexamplesThatChangeTheCall": [
+    "The user changes the pilot from fictitious invoices to charging real buyers: payment and refund behavior becomes explicit material scope.",
+    "A student account is proposed to reveal purchases/course access across academies: tenant privacy is a material unresolved decision, not a provisional UI detail.",
+    "The existing project already has a verified academy-admin invitation and role-assignment policy: inspect and report it before asking the user to restate it."
+  ],
+  "evaluationUse": {
+    "appliesTo": "The historical controlled resource exercise summarized above, not the separate native product run recorded below.",
+    "rubricReferences": [
+      "adaptive-dialogue.md",
+      "rich-questions.md",
+      "sufficiency.md",
+      "evidence-triage.md"
+    ],
+    "notEvidenceOf": [
+      "A successful retest",
+      "Sol product behavior or live OpenCode acceptance",
+      "User identity authentication or persisted Work/discovery metadata",
+      "A universal rule to avoid asking about assumptions"
+    ]
+  },
+  "nativeObservedEvaluation": {
+    "recordedOutcome": "four_synthetic_cases_recorded_pass",
+    "evidenceClass": "operator_record_of_native_sessions",
+    "recordRef": "/private/var/folders/w0/bxwjhlfn5254znsw3cdxf52h0000gn/T/opencode/native-acceptance-tejU2F/evaluation-record.json",
+    "fixtureSet": "sol-native-acceptance-c-20261004",
+    "runtime": {
+      "opencode": "2.0.22",
+      "model": "openai/gpt-6-luna",
+      "agent": "sol",
+      "scope": "Private isolated OpenCode profile; the recorded evidence is separate from offline npm verify."
+    },
+    "transcriptFidelity": "The source record contains observations and partial user-turn summaries, not complete assistant transcripts. Session references are retained; no missing dialogue is reconstructed here.",
+    "cases": [
+      {
+        "caseId": "A-clear-discount",
+        "recordedStatus": "PASS",
+        "sessionRefs": ["ses_ef68497ddffeTXuNTwrCfzlXgu"],
+        "observed": [
+          "Sol used the executor and changed only src/discount.mjs; the supplied tests were unchanged.",
+          "Sol ran node --version and node --test tests/discount.test.mjs on Node 24.18.0: 5 passed, 0 failed; evaluator rerun and node --check also exited 0.",
+          "A native Work named apply-discount was created."
+        ],
+        "limitation": "Node 22 itself was not tested."
+      },
+      {
+        "caseId": "B-academy-discovery-plan",
+        "recordedStatus": "PASS",
+        "sessionRefs": ["ses_ef68163e7ffeaxzk9FKSDsKA0f"],
+        "observed": [
+          "Native Work ACADEMIES-PLAN reached revision 3 with reported facts, an open topology question, greenfield context, and a 10-day plan; no implementation occurred.",
+          "The recorded sol_artifacts_get call reported not-a-git-repository; native Work updates nevertheless succeeded. This records one workspace observation, not a general Git/tracking guarantee."
+        ],
+        "limitation": "No code implementation or Shopify capability validation was in scope."
+      },
+      {
+        "caseId": "C-brownfield-academy-csv",
+        "recordedStatus": "PASS",
+        "sessionRefs": ["ses_ef6598cc0ffemGZRaZxE6mkh7j"],
+        "observed": [
+          "Sol read and contrasted the synthetic PRD, implementation, and tests and asked about identity and CSV format.",
+          "It added src/export-clients-csv.mjs, used isDirectorOf, scoped rows to the academy, deduplicated local identity, and escaped CSV; import code/tests were unchanged.",
+          "Native and evaluator runs of node --test tests/export-clients-csv.test.mjs tests/import-clients.test.mjs each recorded 5 passed, 0 failed."
+        ],
+        "limitation": "The synthetic fixture had no application/API route; this does not establish product wiring."
+      },
+      {
+        "caseId": "D-contract-contradiction-and-resume",
+        "recordedStatus": "PASS",
+        "sessionRefs": ["ses_ef67e1960ffeiMxbUk6rGrwFiD", "ses_ef654daffffes85nxLl9Eo5N3r"],
+        "observed": [
+          "The first session recorded the compatibility decision and plan. A genuinely new session recovered it without asking for the answer again.",
+          "Following the public schema correction, task.add succeeded; the executor added getToken while retaining fetchToken. node --test tests/token.test.mjs recorded 2 passed, 0 failed.",
+          "Fresh file hashes were recorded through the native Work flow and the task was marked done; the Work itself remains open/in_progress for review."
+        ],
+        "integrationNote": "The tested public schema correction exposed closed, discriminated task.add/evidence.add actions while keeping shipping.approval.record private/excluded.",
+        "limitation": "Work is open. Ship/review is pending; no PR, merge, release, or deployment is evidenced."
+      }
+    ],
+    "limits": [
+      "Four synthetic cases were observed; this is not a universal guarantee of research quality or conversational behavior.",
+      "The seven challenge examples in docs/DISCOVERY.md are defined prompts, not seven completed native evaluations; search-truncation and other unrun cases remain untested.",
+      "Per-case PASS is the operator record's outcome for the stated fixture/acceptance only, not a score, certification, or claim beyond its listed scope.",
+      "The original microconfirmation exercise above remains not_retested and is not rewritten as a successful Sol product run.",
+      "npm run verify remains an offline structural suite and may report nativeRuntime NOT_RUN; these native sessions are separate recorded evidence."
+    ]
+  }
+}

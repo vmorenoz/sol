@@ -10,8 +10,9 @@
 | {{F-ID}} | {{critical/high/medium/low/info}} | {{defecto}} | {{archivo:línea/escenario}} | {{acción}} |
 Si no hay hallazgos, declararlo sin inventar una tabla ni certificar ausencia total de defectos.
 ## Cobertura frente a aceptación
-{{Criterios cubiertos, omitidos y contradicciones.}}
+{{Matriz de todos los criterios y tareas relevantes: covered con evidencia vigente / partial / uncovered / blocked / unverifiable, con referencias. No cambiar criterio sin decisión confirmada ni sumar PASS parciales como aceptación global. Condicional si la auditoría cubre flujos: traza entrada→servicio→contrato→persistencia/backend→resultado y estado demo / implementado parcial / conectado no verificado / ejecutado-verificado (solo alcance observado) / ausente / desconocido; no encontrado en búsqueda acotada = desconocido.}}
 ## Conclusión
 {{Sin bloqueos observados / requiere correcciones / no verificable, con razones.}}
 ## Límites y decisiones pendientes
 {{Recomendaciones no obligatorias por separado; no fingir aprobación institucional.}}
+{{Separar código/config local (conducta local), documentación (intención/contrato/historia) y despliegue observado (solo ese entorno). Si discrepan, investigar y registrar fuente/base/version/límite; escalar decisión material, no tratar doc stale como autoridad única. Informe narrativo, result nativo o fingerprints no prueban ejecución.}}

@@ -11,6 +11,6 @@
     "objective": {"type": "string", "minLength": 1, "maxLength": 4000},
     "criterion": {"type": "string", "minLength": 1, "maxLength": 4000},
     "verification": {"type": "string", "minLength": 1, "maxLength": 4000},
-    "priority": {"enum": ["low", "normal", "high", "urgent"]}
+    "priority": {"enum": ["low", "normal", "high", "critical"]}
   }
 }

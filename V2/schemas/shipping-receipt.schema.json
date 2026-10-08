@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:sol:v2:shipping-receipt:1",
+  "title": "Sol shipping operation receipt input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+    "intentId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+    "observedAt": {"type": "string", "format": "date-time"},
+    "action": {"enum": ["create_commit", "push_branch", "create_pr"]},
+    "status": {"enum": ["succeeded", "failed", "blocked"]},
+    "exitCode": {"type": "integer", "minimum": -1, "maximum": 255},
+    "beforeHeadSha": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"},
+    "afterHeadSha": {"type": "string", "pattern": "^[a-f0-9]{40,64}$"},
+    "beforeSnapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "observedSnapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "contentSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "snapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "pushedBranch": {"type": "string", "minLength": 1, "maxLength": 300},
+    "prUrl": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 2000}
+  },
+  "required": ["schemaVersion", "id", "intentId", "observedAt", "action", "status", "beforeHeadSha", "afterHeadSha", "beforeSnapshotSha256", "observedSnapshotSha256", "contentSha256", "snapshotSha256", "summary"]
+}

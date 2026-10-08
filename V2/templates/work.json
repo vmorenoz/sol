@@ -12,6 +12,7 @@
         "id": "AC-1",
         "description": "El resultado cumple el comportamiento acordado.",
         "verification": "Comprobación específica por definir con el usuario/proyecto antes de ejecutar.",
+        "contractRevision": 1,
         "evidenceIds": []
       }
     ]
@@ -29,6 +30,8 @@
     {
       "id": "T-1",
       "title": "Implementar el alcance acordado",
+      "kind": "implementation",
+      "contractRevision": 1,
       "criterionIds": [
         "AC-1"
       ],
@@ -47,5 +50,7 @@
     }
   ],
   "evidence": [],
+  "discovery": {"schemaVersion": 1, "contextLane": "unknown", "sources": [], "claims": [], "assumptions": [], "questions": [], "decisions": []},
+  "shipping": {"schemaVersion": 1, "intents": [], "receipts": []},
   "closure": null
 }

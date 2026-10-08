@@ -1,16 +1,20 @@
 # Investigación · {{work-id}} · {{pregunta}}
 <!-- template: research@1.0 -->
-## Necesidad e incertidumbre
-{{Qué decisión permite tomar este encargo.}}
-## Hallazgos y fuentes
-| Hallazgo | Tipo: hecho/supuesto | Fuente verificable | Fecha/versión |
+## Propósito y decisión informada
+{{Qué pregunta/resolución habilita; por qué hace falta esta investigación y qué queda fuera.}}
+## Hallazgos, procedencia y vigencia
+| Afirmación | Clase: hecho/hipótesis/recomendación | Fuente exacta | Fecha/versión y estado: hallado/leído/contrastado/stale | Confianza y límite |
+|---|---|---|---|---|
+| {{afirmación}} | {{clase}} | {{ruta, símbolo, URL/documento}} | {{fecha; estado}} | {{base y límite}} |
+«No encontrado» en búsqueda acotada = desconocido, no ausencia. No reportar documentación como ejecución observada.
+## Contradicciones, premisas y fallos relevantes
+{{Diferencias entre respuesta, documentos e implementación; premisas no verificadas y qué impacto tendrían.}}
+## Opciones y trade-offs
+| Opción | Consecuencia/coste/riesgo | Reversibilidad | Cuándo elegirla |
 |---|---|---|---|
-| {{hallazgo}} | {{tipo}} | {{archivo o documentación}} | {{vigencia}} |
-## Alternativas y consecuencias
-{{Opciones reales, coste, restricciones, reversibilidad y recomendación razonada.}}
-## Preguntas para el usuario, vía Sol
-{{Solo decisiones humanas necesarias; incluir contexto, opciones y consecuencia de no decidir.}}
-## Confirmaciones recibidas
-{{Lo que el usuario ya respondió; no volver a preguntarlo.}}
-## Conclusión y límites
-{{Qué está listo para especificar/planificar y qué sigue bloqueado.}}
+| {{opción real}} | {{efectos}} | {{grado}} | {{condición}} |
+Recomendación condicional: {{razones y evidencia; qué contra-premisa cambiaría la recomendación}}.
+## Decisiones y preguntas para Sol
+{{Decisiones propuestas/confirmadas, por quién y base. Preguntas solo humanas y materiales: motivo, opciones, consecuencias, recomendación y follow-up si la respuesta es parcial.}}
+## Suficiencia, trabajo que continúa y límites
+{{Qué puede especificarse/planificarse/ejecutarse; qué queda desconocido; acción exacta que sí depende de respuesta; búsquedas incompletas y siguiente investigación si aplica. Sin puntuación/cuota.}}
