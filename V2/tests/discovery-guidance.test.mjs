@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const skills=['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship','sol-discovery'];
-const discoveryRefs=['interview-lenses.md','evidence-triage.md','rich-questions.md','adaptive-dialogue.md','decision-handoff.md','sufficiency.md','context-map.md'];
+const discoveryRefs=['interview-lenses.md','evidence-triage.md','rich-questions.md','adaptive-dialogue.md','decision-handoff.md','sufficiency.md','context-map.md','capability-selection.md'];
 
 function frontmatter(source){return source.match(/^---\n([\s\S]*?)\n---\n/)?.[1]??'';}
 
@@ -72,7 +72,7 @@ test('el caso de evaluación mantiene separados resumen fuente, observación, ob
 
 test('documenta resultados nativos acotados sin convertirlos en cobertura universal ni Ship PASS',()=>{
   const docs=read('docs/DISCOVERY.md');
-  assert.match(docs,/Evidencia de evaluación nativa observada/);
+  assert.match(docs,/Evidencia histórica de evaluación nativa observada/);
   for(const phrase of ['OpenCode 2.0.22','5\/5','ACADEMIES-PLAN','isDirectorOf','sesión nueva recuperó la decisión','Ship continúa pendiente','nativeRuntime: NOT_RUN','búsqueda truncada']) assert.ok(docs.includes(phrase),`falta evidencia/límite ${phrase}`);
   assert.match(docs,/no transcripciones completas/);
   assert.match(docs,/no se reescribe como PASS de Sol/);
@@ -97,9 +97,9 @@ test('plantillas permiten trazabilidad y procedencia sin reemplazar metadata can
   const research=read('templates/research.md');
   const spec=read('templates/spec.md');
   const plan=read('templates/plan.md');
-  assert.match(research,/Fuente exacta/);
-  assert.match(research,/Recomendación condicional/);
-  assert.match(research,/Sin puntuación\/cuota/);
+  assert.match(research,/fuente exacta/);
+  assert.match(research,/recomendación condicional/);
+  assert.match(research,/Sin cuotas, puntuaciones/);
   assert.match(spec,/confirmada\/propuesta\/abierta/i);
   assert.match(plan,/Objetivo\/AC.*Resultado\/verdad esperada.*Tarea\(s\).*Comprobación observable/);
   assert.match(plan,/productor→contrato→consumidor→resultado/);
@@ -140,10 +140,11 @@ test('formatos de decisión/evidencia/entrega preservan historia, tipado y lími
   const delivery=read('templates/delivery.md');
   const catalog=read('templates/README.md');
   for(const token of ['propuesta','confirmada','sustituida','fuente de confirmación','supersession']) assert.ok(decision.toLowerCase().includes(token.toLowerCase()),`decision: ${token}`);
-  for(const token of ['fact/hypothesis/recommendation/user-reported','histórico','stale','not_run','Nunca PASS requerido']) assert.ok(evidence.toLowerCase().includes(token.toLowerCase()),`evidence: ${token}`);
+  for(const token of ['resultado observado','histórico','not_run','invalida aceptación actual','no demuestra ejecución']) assert.ok(evidence.toLowerCase().includes(token.toLowerCase()),`evidence: ${token}`);
   for(const token of ['shipping.intent.record','shipping.approval.record','shipping.intent.invalidate','shipping.receipt.record','no autoriza operaciones','host']) assert.ok(delivery.toLowerCase().includes(token.toLowerCase()),`delivery: ${token}`);
-  for(const action of ['discovery.source.add','discovery.claim.add','discovery.assumption.add','discovery.assumption.resolve','discovery.question.add','discovery.question.answer','discovery.decision.add','discovery.decision.supersede']) assert.ok(catalog.includes(action),`catálogo debe documentar ${action}`);
-  assert.match(catalog,/no inventar `resolutionKind`/i);
+  for(const concept of ['sol_work_apply','fuentes, claims, supuestos, preguntas y decisiones','resolutionKind: human_decision | investigation','taskIds','criterionIds']) assert.ok(catalog.includes(concept),`catálogo debe documentar ${concept}`);
+  assert.match(catalog,/ausencia de ambos significa global/);
+  assert.match(catalog,/Nunca añadas campos/);
 });
 
 test('las expectativas son criterios de revisión de transcripción, no un clasificador de PASS conversacional',()=>{

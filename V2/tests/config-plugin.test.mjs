@@ -1,3 +1,4 @@
+import {preparePluginVersionFixture} from './plugin-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,6 +12,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 test('plugin de configuración usa datos de sesión, filtra catálogo y separa preview de guardado',()=>{
   const home=fs.mkdtempSync(path.join(os.tmpdir(),'sol-config-plugin-'));
   try{
+    preparePluginVersionFixture(home);
     const lib=path.join(home,'.sol/lib'),schemas=path.join(home,'.sol/schemas');fs.mkdirSync(lib,{recursive:true});fs.mkdirSync(schemas,{recursive:true});
     // Plugin bootstrap consumes both installed schemas to expose canonical tool enums.
     fs.copyFileSync(path.join(root,'schemas/work-update.schema.json'),path.join(schemas,'work-update.schema.json'));

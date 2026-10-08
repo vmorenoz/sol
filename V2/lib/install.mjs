@@ -7,9 +7,10 @@ import {listFiles,safePath,sha256,readJSON,writeJSON,atomicWrite,exists} from '.
 import {composeNativeFiles,solRuntimeModuleNames,solSkillNames} from './composition.mjs';
 import {discoverLegacy} from './legacy-install.mjs';
 import {planModelConfig,readModelConfig} from './model-config.mjs';
+import {VERSION,createSolBuildInfo} from './version.mjs';
 
 const source=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-export const VERSION='2.0.0';
+export {VERSION};
 const manifestPath='.sol/installation.json';
 const runtimeName='opencode-v2';
 
@@ -23,6 +24,7 @@ function workspaceFiles(){
   const artifactTracking=path.join(source,'lib','artifact-tracking.mjs');
   if(fs.existsSync(artifactTracking)&&fs.statSync(artifactTracking).isFile())
     result.set('.sol/lib/artifact-tracking.mjs',fs.readFileSync(artifactTracking));
+  result.set('.sol/version.mjs',fs.readFileSync(path.join(source,'version.mjs')));
   result.set('.sol/catalog.json',fs.readFileSync(path.join(source,'agents/catalog.json')));
   return result;
 }
@@ -60,8 +62,8 @@ function nativeOwner(relative,opencodeDir){
   return null;
 }
 function permittedManagedPath(relative,oc){
-  if(/^\.sol\/(?:templates|schemas|lib|bin|docs)\/.+/.test(relative)||relative==='.sol/catalog.json')return true;
-  if(solSkillNames.some(n=>relative.startsWith(`.agents/skills/${n}/`)||relative.startsWith(`${oc}/skills/${n}/`)))return true;
+  if(/^\.sol\/(?:templates|schemas|lib|bin|docs)\/.+/.test(relative)||['.sol/catalog.json','.sol/release.json','.sol/version.mjs'].includes(relative))return true;
+  if(solSkillNames.some(n=>['.agents/skills','.copilot/skills','.claude/skills',`${oc}/skills`].some(dir=>relative.startsWith(`${dir}/${n}/`))))return true;
   if(relative.startsWith(`${oc}/plugins/sol/`))return true;
   if(relative.startsWith(`${oc}/agents/`)||relative.startsWith(`${oc}/commands/`)||relative.startsWith('.copilot/agents/'))
     return /^sol(?:-[a-z0-9-]+)?(?:\.agent)?\.md$/.test(path.posix.basename(relative));
@@ -90,7 +92,11 @@ function getPrior(root,oc){
 }
 function installationFiles(root,runtimes,oc){
   const files=workspaceFiles();
-  for(const [key,value] of composeNativeFiles({root:source})){
+  const native=composeNativeFiles({root:source});
+  // Hash canonical payload names before installation-specific paths are embedded.
+  const buildInfo=createSolBuildInfo(new Map([...files,...native]));
+  files.set('.sol/release.json',JSON.stringify(buildInfo,null,2)+'\n');
+  for(const [key,value] of native){
     const dest=key.replace(/^\.opencode\//,`${oc}/`);
     let text=value;
     if(/\/sol(?:\.agent)?\.md$/.test(key)){
@@ -108,10 +114,10 @@ function checkFiles(root,files,prior,managedConfig=new Set()){
     if(fs.existsSync(dest)){
       if(!fs.statSync(dest).isFile()){conflicts.push(`${relative}: no es archivo`);continue;}
       const current=sha256(fs.readFileSync(dest));
-      if(current===hash)actions.push({path:relative,action:'unchanged',hash});
-      else if(managedConfig.has(relative)||prior?.files?.[relative]===current&&!prior?.borrowed?.includes(relative))actions.push({path:relative,action:'update',hash});
+      if(current===hash)actions.push({path:relative,action:'unchanged',hash,expectedHash:current});
+      else if(managedConfig.has(relative)||prior?.files?.[relative]===current&&!prior?.borrowed?.includes(relative))actions.push({path:relative,action:'update',hash,expectedHash:current});
       else conflicts.push(`${relative}: archivo ajeno o modificado. Renómbralo o conserva tus cambios antes de instalar.`);
-    }else actions.push({path:relative,action:'create',hash});
+    }else actions.push({path:relative,action:'create',hash,expectedHash:null});
   }
   return {actions,conflicts};
 }
@@ -128,6 +134,10 @@ function assertNoUnregisteredAgents(root,oc,runtimes,prior,expected=new Map()){
     }
   }
   if(runtimes.includes(runtimeName)){
+    for(const name of ['sol.js','sol.mjs','sol.ts']){
+      const loader=`${oc}/plugins/${name}`;
+      if(exists(root,loader)&&!prior?.files?.[loader])throw new Error(`Integración anterior no registrada: ${path.join(root,loader)}. No se puede comprobar su propiedad; revisa ese loader antes de instalar. No se borró nada.`);
+    }
     const plugin=`${oc}/plugins/sol`;
     if(exists(root,plugin))for(const relative of listFiles(safePath(root,plugin),plugin))
       if(!prior?.files?.[relative]&&!expected.has(relative))throw new Error(`Colisión con plugin no administrado: ${path.join(root,relative)}. No se modificó ningún archivo.`);
@@ -185,7 +195,7 @@ function priorCleanupIds(prior,legacy,desired,oc){
   }
   return [...ids];
 }
-export function planInstall({runtime,scope='global',target,homeDir=os.homedir(),env=process.env,probeVersion,profile='inherited',overrides={},catalog:providedCatalog,probeModels}={}){
+export function planInstall({runtime,scope='global',target,homeDir=os.homedir(),env=process.env,probeVersion,profile,overrides={},catalog:providedCatalog,probeModels}={}){
   if(scope!=='global')throw new Error('Sol solo admite instalación global. Los datos de trabajo siguen separados por proyecto.');
   if(target)throw new Error('La opción target ya no está admitida: Sol se instala globalmente en la carpeta del usuario.');
   if(runtime&&runtime!=='opencode-v2')throw new Error('Sol admite únicamente OpenCode v2.');
@@ -204,13 +214,12 @@ export function planInstall({runtime,scope='global',target,homeDir=os.homedir(),
   const assetPreflight=checkFiles(root,productFiles,effectivePrior);
   if(assetPreflight.conflicts.length)throw new Error(`Instalación cancelada antes de escribir:\n${assetPreflight.conflicts.join('\n')}`);
   const cleanupAgentIds=priorCleanupIds(prior,legacy,productFiles,oc);
-  const cfgState=readModelConfig({homeDir:root,env});
+  const cfgState=readModelConfig({homeDir:root,env,mergeComplementary:true,sourceTexts:legacy.edits});
   const needsCatalog=profile==='balanced'||profile==='custom';
   const catalog=needsCatalog?(providedCatalog??nativeModelCatalog(env,probeModels)):[];
   const sourceTexts=new Map(legacy.edits);
   const jsonRel=`${oc}/opencode.json`,jsoncRel=`${oc}/opencode.jsonc`;
-  if(legacy.edits.has(jsonRel))sourceTexts.set(jsoncRel,legacy.edits.get(jsonRel));
-  const modelPlan=planModelConfig({homeDir:root,env,profile,overrides,catalog,expectedRevision:cfgState.revision,cleanupAgentIds,sourceTexts});
+  const modelPlan=planModelConfig({homeDir:root,env,profile,overrides,catalog,expectedRevision:cfgState.revision,cleanupAgentIds,sourceTexts,mergeComplementary:true,preserveAssignments:profile===undefined});
   for(const rel of modelPlan.removals)if(modelPlan.expectedHashes[rel]!==undefined)effectivePrior.files[rel]=modelPlan.expectedHashes[rel];
   // JSON-only configs always migrate intact, even when there are no model edits.
   if(modelPlan.migration&&!modelPlan.files.has(jsoncRel))modelPlan.files.set(jsoncRel,sourceTexts.get(jsoncRel)??fs.readFileSync(path.join(root,jsonRel),'utf8'));
@@ -229,7 +238,10 @@ export function planInstall({runtime,scope='global',target,homeDir=os.homedir(),
   const borrowed=actions.filter(a=>productFiles.has(a.path)&&a.action==='unchanged'&&(!effectivePrior.files[a.path]||effectivePrior.borrowed.includes(a.path))).map(a=>a.path);
   const removals=[...new Set([...Object.keys(effectivePrior.files).filter(f=>!effectivePrior.borrowed.includes(f)&&!files.has(f)),...modelPlan.removals])].filter(f=>!files.has(f));
   checkRemovals(root,removals,effectivePrior);
-  return {root,scope:'global',opencodeDir:oc,runtimes,runtimeVersion,prior,effectivePrior,legacy,productFiles,files,actions,removals,replacing,borrowed,configChanges:legacy.edits.size,modelPlan,profile};
+  const expectedHashes={...modelPlan.expectedHashes,...Object.fromEntries(actions.map(a=>[a.path,a.expectedHash]))};
+  for(const relative of removals)expectedHashes[relative]=exists(root,relative)?effectivePrior.files[relative]:null;
+  const buildInfo=JSON.parse(productFiles.get('.sol/release.json'));
+  return {root,buildInfo,expectedHashes,scope:'global',opencodeDir:oc,runtimes,runtimeVersion,prior,effectivePrior,legacy,productFiles,files,actions,removals,replacing,borrowed,configChanges:legacy.edits.size,modelPlan,profile:modelPlan.profile,preservedModels:modelPlan.preservedModels};
 }
 // In-process rollback only; not a transaction across crashes or concurrent writers.
 function applyFiles(root,files,actions,removals,prior,finish,expectedHashes={},deferredRemovals=[]){
@@ -264,8 +276,8 @@ function applyFiles(root,files,actions,removals,prior,finish,expectedHashes={},d
 }
 export function install(options={}){
   const p=planInstall(options);
-  if(options.dryRun)return {dryRun:true,target:p.root,scope:p.scope,runtimes:p.runtimes,opencodeVersion:p.runtimeVersion,actions:p.actions,removals:p.removals.filter(f=>!p.modelPlan.removals.includes(f)),legacy:p.legacy.recognized,configChanges:p.configChanges,configPaths:[...new Set([...p.legacy.edits.keys(),...p.modelPlan.files.keys()])],profile:p.profile,modelChanges:p.modelPlan.changes,configPath:p.modelPlan.configRelativePath,migration:p.modelPlan.migration};
-  const manifest={schemaVersion:1,version:VERSION,scope:'global',runtimes:p.runtimes,opencodeDir:p.opencodeDir,files:Object.fromEntries(p.actions.filter(x=>p.productFiles.has(x.path)).map(x=>[x.path,x.hash])),borrowed:p.borrowed,modelConfig:p.modelPlan.modelConfig};
+  if(options.dryRun)return {dryRun:true,version:VERSION,buildInfo:p.buildInfo,target:p.root,scope:p.scope,runtimes:p.runtimes,opencodeVersion:p.runtimeVersion,actions:p.actions,removals:p.removals.filter(f=>!p.modelPlan.removals.includes(f)),legacy:p.legacy.recognized,configChanges:p.configChanges,configPaths:[...new Set([...p.legacy.edits.keys(),...p.modelPlan.files.keys()])],profile:p.profile,preservedModels:p.preservedModels,modelChanges:p.modelPlan.changes,configPath:p.modelPlan.configRelativePath,migration:p.modelPlan.migration};
+  const manifest={schemaVersion:1,...p.buildInfo,scope:'global',runtimes:p.runtimes,opencodeDir:p.opencodeDir,files:Object.fromEntries(p.actions.filter(x=>p.productFiles.has(x.path)).map(x=>[x.path,x.hash])),borrowed:p.borrowed,modelConfig:p.modelPlan.modelConfig};
   const updates=p.actions.filter(a=>a.action==='update').map(a=>a.path);
   const manifestBytes=JSON.stringify(manifest,null,2)+'\n';
   const manifestChanged=!exists(p.root,manifestPath)||!fs.readFileSync(safePath(p.root,manifestPath)).equals(Buffer.from(manifestBytes));
@@ -274,8 +286,8 @@ export function install(options={}){
   p.effectivePrior.recovery=recovery;
   applyFiles(p.root,p.files,p.actions,p.removals,p.effectivePrior,()=>{
     if(manifestChanged)atomicWrite(p.root,manifestPath,manifestBytes);
-  },p.modelPlan.expectedHashes,p.modelPlan.removals);
-  return {installed:true,target:p.root,scope:p.scope,runtimes:p.runtimes,opencodeVersion:p.runtimeVersion,version:VERSION,replacedVersion:p.replacing?p.prior.version:null,removed:p.removals.filter(f=>!p.modelPlan.removals.includes(f)).length,created:p.actions.filter(x=>x.action==='create'&&p.productFiles.has(x.path)).length,updated:p.actions.filter(x=>x.action==='update'&&p.productFiles.has(x.path)).length,unchanged:p.actions.filter(x=>x.action==='unchanged'&&p.productFiles.has(x.path)).length,configChanges:p.configChanges,modelChanges:p.modelPlan.changes,profile:p.profile,configPath:p.modelPlan.configRelativePath,recovery,legacy:p.legacy.recognized,nativeSession:'NOT_RUN'};
+  },p.expectedHashes,p.modelPlan.removals);
+  return {installed:true,target:p.root,scope:p.scope,runtimes:p.runtimes,opencodeVersion:p.runtimeVersion,version:VERSION,buildInfo:p.buildInfo,replacedVersion:p.replacing?p.prior.version:null,removed:p.removals.filter(f=>!p.modelPlan.removals.includes(f)).length,created:p.actions.filter(x=>x.action==='create'&&p.productFiles.has(x.path)).length,updated:p.actions.filter(x=>x.action==='update'&&p.productFiles.has(x.path)).length,unchanged:p.actions.filter(x=>x.action==='unchanged'&&p.productFiles.has(x.path)).length,configChanges:p.configChanges,modelChanges:p.modelPlan.changes,profile:p.profile,preservedModels:p.preservedModels,configPath:p.modelPlan.configRelativePath,recovery,legacy:p.legacy.recognized,nativeSession:'NOT_RUN'};
 }
 
 export function uninstall({runtime,homeDir=os.homedir(),env=process.env,dryRun=false}={}){

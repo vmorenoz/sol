@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import {pathToFileURL,fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const tmpBase=process.env.TMPDIR||'/private/var/folders/w0/bxwjhlfn5254znsw3cdxf52h0000gn/T/opencode';
+const tmpBase=os.tmpdir();
 function filesUnder(directory,prefix=''){
   const files=[];
   for(const entry of fs.readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){
@@ -31,7 +31,7 @@ test('tarball aislado instala sus recursos y ejerce el plugin sobre dos raíces 
   t.after(()=>fs.rmSync(sandbox,{recursive:true,force:true}));
   const packDir=path.join(sandbox,'pack'),extractDir=path.join(sandbox,'extract'),home=path.join(sandbox,'home');
   fs.mkdirSync(packDir);fs.mkdirSync(extractDir);
-  const packed=run('npm',['pack','--ignore-scripts','--pack-destination',packDir],{cwd:root});
+  const packed=run('npm',['pack','--ignore-scripts','--pack-destination',packDir],{cwd:root,env:{...process.env,npm_config_cache:path.join(sandbox,'npm-cache')}});
   const tarball=path.join(packDir,packed.split('\n').at(-1));assert.ok(fs.statSync(tarball).isFile());
   run('tar',['-xzf',tarball,'-C',extractDir]);
   const packageRoot=path.join(extractDir,'package');assert.ok(fs.statSync(packageRoot).isDirectory());

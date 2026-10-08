@@ -22,9 +22,9 @@ export const solCommandNames=Object.keys(solCommandSkills);
 export const solSkillNames=[...new Set(listFiles(path.join(sourceRoot,'skills')).map(file=>file.split('/')[0]))].sort();
 export const solRuntimeModuleNames=[
   'artifacts.mjs','fs.mjs','schema.mjs','work-mutations.mjs','receipts.mjs','workspace.mjs',
-  'jsonc.mjs','model-profiles.mjs','model-config.mjs','contracts.mjs','shipping.mjs','shipping-snapshot.mjs','shipping-authority.mjs',
+  'version.mjs','jsonc.mjs','model-profiles.mjs','model-config.mjs','contracts.mjs','shipping.mjs','shipping-snapshot.mjs','shipping-authority.mjs',
 ];
-export const solToolNames=['sol_workspace_prepare','sol_status','sol_work_get','sol_work_create','sol_work_apply','sol_work_close','sol_work_reopen','sol_history','sol_work_validate','sol_project_complete_map','sol_config_get','sol_config_apply','sol_artifacts_get','sol_artifacts_set','sol_ship_preflight','sol_ship_authorize'];
+export const solToolNames=['sol_version','sol_workspace_prepare','sol_status','sol_work_get','sol_work_create','sol_work_apply','sol_work_close','sol_work_reopen','sol_history','sol_work_validate','sol_project_complete_map','sol_config_get','sol_config_apply','sol_artifacts_get','sol_artifacts_set','sol_ship_preflight','sol_ship_authorize'];
 export const solShipAuthorizeToolName='sol_ship_authorize';
 export const solPermissionToolNames=[...solToolNames];
 const askTools=new Set(['sol_config_apply','sol_artifacts_set',solShipAuthorizeToolName]);
@@ -33,11 +33,12 @@ export function solToolPermissionEffect(name,role='primary'){
   return askTools.has(name)?'ask':'allow';
 }
 
-const OC=`<runtime_adapter name="opencode-v2" documented_baseline="2.0.20">
-Usa exclusivamente la API nativa de OpenCode v2: mode primary/subagent, permissions, shell y subagent. Sol delega mediante la herramienta nativa subagent con agent, description y prompt. Las delegaciones deben permanecer visibles; no crees scheduler, leases, sesiones ni subprocesses.
-Las herramientas Sol son custom tools del plugin global. La raíz viene del workspace activo del plugin; nunca la aceptes del usuario/modelo. Usa sol_* para estado y mutaciones y responde con el recibo breve devuelto. No escribas .sol/state.json, history.jsonl ni work.json con herramientas genéricas, no generes work.next.json y no ejecutes scripts/CLI de Sol.
-Las skills se cargan con la herramienta skill. Los comandos Sol son dispatchers nativos de una línea. Respeta las aprobaciones configuradas por el usuario; no alteres modelos, configuración, MCP ni permisos globales. Excepciones estrechas: ante petición explícita, Sol principal puede usar sol-config para preferencias globales fijas de modelos de agentes Sol y sol_artifacts_* para elegir tracking local del repo activo. Ambos flujos requieren vista previa, confirmación interactiva nueva y aprobación del host. No gestiones providers, credenciales, permisos, settings Git compartidos, staging, commits, pushes, modelo principal del runtime ni overrides de sesión. No inicialices Git ni prometas cambiar la sesión activa o subir datos.
-</runtime_adapter>`;
+const OC=`<opencode_native_capabilities documentation_checked="2026-10-08" runtime_validation="not_run">
+Sol está diseñado exclusivamente para OpenCode v2. Usa sus agentes primary/subagent, permissions, shell, skill y subagent. Delega con la herramienta nativa subagent (agent, description, prompt); OpenCode gestiona sesiones, concurrencia y ciclo de vida. Mantén las delegaciones visibles. No implementes un runtime paralelo, scheduler ni transporte entre hosts.
+Las herramientas sol_* son herramientas nativas registradas por el plugin. Su raíz se resuelve desde la ubicación de la sesión que las invoca, nunca desde un argumento del usuario/modelo. Úsalas para consultar y modificar metadata persistente de Sol; no escribas state.json, history.jsonl ni work.json con herramientas genéricas ni ejecutes un CLI de Sol. La salida legible de las herramientas basta para coordinar; los schemas JSON son contratos internos.
+sol_status muestra frentes paginados incluso cuando existe foco. sol_work_get permite seleccionar sección, página, alcance o itemId y no abre los documentos citados. sol_version distingue el payload cargado por esta instancia de la instalación actual. Una inspección de archivos o un test con fixtures no acredita que este plugin esté cargado en una sesión real.
+Las skills se cargan con skill y los comandos Sol son dispatchers nativos. Respeta las aprobaciones del usuario y del host. No alteres modelos, configuración, MCP ni permisos globales por iniciativa propia. Ante petición explícita, Sol principal puede usar sol-config para preferencias globales de modelos de agentes Sol y sol_artifacts_* para tracking local del repo activo; ambos guardados requieren preview, confirmación nueva y aprobación del host. No gestiones providers, credenciales, permisos, settings Git compartidos ni el modelo activo de la sesión. La administración de preferencias/tracking no autoriza staging, commits ni pushes; shipping expresamente solicitado usa sol-ship y su aprobación propia. No inicialices Git ni prometas cambios remotos sin autorización.
+</opencode_native_capabilities>`;
 
 const frontmatter=o=>'---\n'+Object.entries(o).map(([k,v])=>`${k}: ${JSON.stringify(v)}`).join('\n')+'\n---\n\n';
 function read(root,relative){return fs.readFileSync(path.join(root,relative),'utf8').trim();}
@@ -58,7 +59,7 @@ export function composeNativeFiles({root}){
     const permissions=primary
       ? [...catalog.specialists.map(a=>({action:'subagent',resource:a.id,effect:'allow'})),...solPermissionToolNames.map(name=>({action:name,resource:'*',effect:solToolPermissionEffect(name)})),{action:'edit',resource:'**/.sol/**',effect:'deny'}]
       : [{action:'subagent',resource:'*',effect:'deny'},...solPermissionToolNames.map(name=>({action:name,resource:'*',effect:solToolPermissionEffect(name,'subagent')}))];
-    files.set(`.opencode/agents/${agent.id}.md`,frontmatter({description:agent.description,mode:primary?'primary':'subagent',...(primary?{}:{hidden:true}),permissions})+OC+'\n\n'+body);
+    files.set(`.opencode/agents/${agent.id}.md`,frontmatter({description:agent.description,mode:primary?'primary':'subagent',permissions})+OC+'\n\n'+body);
   }
   for(const [name,skillName] of Object.entries(solCommandSkills)){const op=operationBody(root,skillName);files.set(`.opencode/commands/${name}.md`,frontmatter({description:op.description,agent:'sol',subagent:false})+op.text);}
   // Skills are copied unchanged to OpenCode's native global-compatible directory.

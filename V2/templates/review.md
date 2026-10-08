@@ -1,18 +1,10 @@
-# Revisión · {{rol}} · {{work-id}}
+# Revisión · {{rol}} · {{referencia del encargo}}
 <!-- template: review@1.0 -->
-## Alcance y base revisada
-{{Qué artefactos/código, revisión y criterios; qué queda fuera.}}
-## Método y evidencia
-{{Qué se inspeccionó o ejecutó y con qué limitaciones.}}
-## Hallazgos
-| ID | Severidad | Hallazgo e impacto | Referencia reproducible | Corrección sugerida |
-|---|---|---|---|---|
-| {{F-ID}} | {{critical/high/medium/low/info}} | {{defecto}} | {{archivo:línea/escenario}} | {{acción}} |
-Si no hay hallazgos, declararlo sin inventar una tabla ni certificar ausencia total de defectos.
-## Cobertura frente a aceptación
-{{Matriz de todos los criterios y tareas relevantes: covered con evidencia vigente / partial / uncovered / blocked / unverifiable, con referencias. No cambiar criterio sin decisión confirmada ni sumar PASS parciales como aceptación global. Condicional si la auditoría cubre flujos: traza entrada→servicio→contrato→persistencia/backend→resultado y estado demo / implementado parcial / conectado no verificado / ejecutado-verificado (solo alcance observado) / ausente / desconocido; no encontrado en búsqueda acotada = desconocido.}}
-## Conclusión
-{{Sin bloqueos observados / requiere correcciones / no verificable, con razones.}}
-## Límites y decisiones pendientes
-{{Recomendaciones no obligatorias por separado; no fingir aprobación institucional.}}
-{{Separar código/config local (conducta local), documentación (intención/contrato/historia) y despliegue observado (solo ese entorno). Si discrepan, investigar y registrar fuente/base/version/límite; escalar decisión material, no tratar doc stale como autoridad única. Informe narrativo, result nativo o fingerprints no prueban ejecución.}}
+## Conclusión y hallazgos
+{{Resultado útil primero. Por hallazgo: impacto/gravedad justificada, referencia, razonamiento/reproducción y corrección mínima. Separar defecto, incertidumbre y mejora opcional. Si no hay hallazgos, no inventar tabla ni certificar ausencia total.}}
+## Alcance, base y evidencia
+{{Qué se contrastó, decisiones/criterios pertinentes, archivos/contratos, método y límites. Distinguir observación estática, pruebas reales e intención documentada.}}
+## Cobertura relevante
+{{Criterios/tareas del encargo y evidencia vigente o brecha. Para integración, relaciones y recorrido afectados; no sumar PASS aislados como aceptación global.}}
+## Decisiones o siguiente paso
+{{Solo lo pendiente que cambia una acción. Revisión completada puede requerir correcciones; no implica aprobación del usuario. Omitir secciones vacías.}}

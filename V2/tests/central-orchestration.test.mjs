@@ -3,85 +3,57 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {composeNativeFiles} from '../lib/composition.mjs';
-
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const composed=composeNativeFiles({root});
-const prompt=composed.get('.opencode/agents/sol.md');
+const prompt=composeNativeFiles({root}).get('.opencode/agents/sol.md');
+const section=name=>{const value=prompt.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1];assert.ok(value,`falta ${name}`);return value;};
 
-test('el agente central compuesto conserva límites y gates de seguridad',()=>{
-  assert.match(prompt,/Usa SOLO la delegación, herramientas, permisos, sesiones y paralelismo que el runtime expone/);
-  assert.match(prompt,/No configures providers, credenciales, permisos, reglas Git compartidas/);
-  assert.match(prompt,/vista previa, confirmación interactiva nueva y aprobación del host/);
-  assert.match(prompt,/No escribas \.sol\/state\.json, history\.jsonl ni work\.json/);
-  assert.match(prompt,/sol_work_close` exige aceptación positiva vigente/);
+test('principal conserva fronteras nativas, permisos y gates de cierre',()=>{
+  const native=section('native_opencode_boundary');
+  for(const clause of [/OpenCode producto v2/,/herramienta subagent/,/No lances agentes por shell\/SDK/,/denegación explícita.*nunca se elude/,/No cambies providers, credenciales, permisos/,/preview, confirmación y aprobación host/,/shipping expresamente solicitado usa sol-ship/])assert.match(native,clause);
+  assert.match(section('canonical_state_and_evidence'),/sol_work_close.*aceptación positiva vigente/);
 });
 
-test('el contrato central cubre inventario multiobjetivo y continuidad sin recordatorios',()=>{
-  const section=prompt.match(/<multi_objective_continuity>([\s\S]*?)<\/multi_objective_continuity>/)?.[1];
-  assert.ok(section,'falta política de continuidad multiobjetivo');
-  for(const clause of [
-    /TODOS los frentes autorizados/,
-    /siguiente acción, dependencias, bloqueos y aceptación/,
-    /conserva los demás frentes/,
-    /siguiente acción ya autorizada, sin esperar «avanza\/procede»/,
-    /Serializa todas las mutaciones del mismo Work/,
-    /taskIds existentes/,
-    /ID de delegación propio.*no es sessionID/,
-    /contratos compartidos.*metadata en paralelo/,
-    /petición nueva de administración/,
-  ]) assert.match(section,clause);
+test('selección dinámica conserva todos los frentes y paraleliza por dependencias y capacidad',()=>{
+  const body=section('dynamic_orchestration');
+  for(const clause of [/todos los frentes autorizados/,/incertidumbre, dependencias, riesgo, capacidad/,/No sigas Researcher→Explorer→Planner/,/contratos API\/DTO.*bases de datos compartidos/,/no asignes el mismo scope a dos escritores/,/sin duplicar trabajo en curso/,/no esperes a una rama independiente/,/Serializa mutaciones del mismo Work/,/revisión independiente.*auth\/permisos\/RLS/])assert.match(body,clause);
 });
 
-test('recuperación local distingue bloqueos, contrato y escritura documental de metadata',()=>{
-  const section=prompt.match(/<local_recovery_and_contracts>([\s\S]*?)<\/local_recovery_and_contracts>/)?.[1];
-  assert.ok(section,'falta política local de recovery');
-  for(const clause of [
-    /solo a las ramas que dependen/,
-    /editar documentos Markdown\/producto dentro del writeScope/,
-    /retorno «blocked» es un diagnóstico/,
-    /no está en PATH/,
-    /schema\/API vigente/,
-    /inspecciona recibo\/estado antes de repetir/,
-    /no cancela frentes sin dependencia/,
-    /no autorización para borrar/,
-  ]) assert.match(section,clause);
+test('retorno Markdown no obliga JSON ni reportes duplicados y conserva correlación',()=>{
+  const body=section('delegation_and_return');
+  for(const clause of [/Markdown natural/,/contexto rico y puntual/i,/taskIds reales previamente registrados/,/no es sessionID/,/No obligues a JSON/,/report\.md y result\.json/,/correlaciona.*llamada nativa/,/no reconstruyas ejecución, inventes aprobación/,/No hay parser por encabezados/])assert.match(body,clause);
+  assert.match(body,/integra lo disjunto, reconcilia lo afectado/);
 });
 
-test('metadata aplica enums canónicos y evidencia, revisión y cierre requieren aceptación',()=>{
-  for(const clause of [
-    /documents\[\]\.kind.*`work`, `spec`, `plan`, `research`, `review`, `decision`, `delivery`, `evidence` o `project`/,
-    /evidence\[\]\.kind.*`executed`, `manual`, `static` o `not_run`/,
-    /Referencias `taskIds` deben existir en el Work/,
-    /diferencia evidencia observada de autoinforme/,
-    /Registra evidencia real y revisión vigente/,
-    /No presentes checks de prompt\/offline como conducta autónoma o aceptación live/,
-  ]) assert.match(prompt,clause);
+test('recuperación distingue capacidad, denegación, contrato y efecto incierto',()=>{
+  const body=section('recovery_and_finish');
+  for(const clause of [/blocked.*diagnóstico/,/herramienta ausente, autenticación, permiso/,/command -v negativo.*PATH/,/API\/schema vigente/,/efecto es incierto.*verifica estado\/recibo antes de repetir/,/denegación no se reintenta por otra vía/,/no inventes polling, scheduler/])assert.match(body,clause);
 });
 
-test('síntesis final informa por frente hallazgos, ejecución y límites',()=>{
-  assert.match(prompt,/sintetiza cada frente con resultado\/hallazgos, qué se ejecutó y qué no, evidencia y bloqueos\/limitaciones/);
-  assert.match(prompt,/No presentes checks de prompt\/offline como conducta autónoma o aceptación live de OpenCode/);
+test('metadata conserva enums, scope, evidencia real y cierre global',()=>{
+  const body=section('canonical_state_and_evidence');
+  for(const clause of [/documents\[\]\.kind admite work, spec, plan, research, review, decision, delivery, evidence o project/,/evidence\[\]\.kind distingue executed, manual, static y not_run/,/Sol es el único escritor de metadata/,/expectedRevision vigente/,/Nunca escribas.*state\/history mediante shell\/write\/edit/,/No presentes autoinforme como ejecución observada/,/Cierre global sigue requiriendo aceptación completa/])assert.match(body,clause);
 });
 
-test('el descubrimiento integrado evita cuotas y conserva un interlocutor con follow-up adaptativo',()=>{
-  for(const clause of [
-    /qué\/por qué.*cómo\/viabilidad/,
-    /Pregunta solo por incertidumbres que cambien materialmente/,
-    /Evita cuotas, puntuaciones, rondas fijas y confirmaciones repetidas/,
-    /Adapta follow-up a la respuesta/,
-    /Sol es el único interlocutor/,
-    /research\/exploration\/specification\/planning/,
-    /Bloquea solo implementación\/acción dependiente/,
-  ]) assert.match(prompt,clause);
+test('intención separa plan-only, cambio local y preparación persistente explícita',()=>{
+  const body=section('intent_and_authority');
+  for(const clause of [/plan-only.*espera antes de implementar/,/Solo.*\/sol-init|solo \/sol-init/,/encargo ordinario.*no lo activa/,/cambio local explícito y acotado puede delegarse en sesión/,/sin fabricar Work\/IDs/,/no bloquees un cambio menor/,/No conviertas un encargo persistente incompleto en efímero/])assert.match(body,clause);
+  assert.match(section('recovery_and_finish'),/continúa la siguiente acción autorizada/);
 });
 
-test('skills de flujo se enrutan como atajos, no como pipeline ni permisos',()=>{
-  for(const skill of ['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship','sol-discovery']) assert.ok(prompt.includes(skill),`falta ruta ${skill}`);
-  assert.match(prompt,/no encadenes todas por defecto/);
-  assert.match(prompt,/Las skills son guías, no estado ni permisos/);
-  assert.match(prompt,/Use native `skill` with exact ID/);
-  assert.match(prompt,/Neighboring references are not auto-loaded/);
-  assert.match(prompt,/Do not auto-load for greeting, a plain read-only\/status query, or every Work/);
-  assert.match(prompt,/explicit request to resume\/continue routes to `sol-resume`/);
-  assert.match(prompt,/read-only\/Plan mode/);
+test('discovery tiene preguntas adaptativas y suficiencia para el próximo paso',()=>{
+  const body=section('discovery_and_decisions');
+  for(const clause of [/qué\/por qué y cómo\/viabilidad/,/Investiga lo verificable/,/respuestas humanas.*materialmente/,/recomendación condicional/,/No hay cuotas, puntuaciones ni rondas fijas/,/si es parcial, pregunta solo el residuo/,/La suficiencia sirve al próximo paso/,/continúa frentes independientes/,/dev\/prod/])assert.match(body,clause);
+});
+
+test('skills y consultas son selectivas sin convertirlas en un runtime propio',()=>{
+  const skills=section('skill_routing');
+  for(const id of ['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship','sol-discovery','sol-resume'])assert.ok(skills.includes(id));
+  for(const clause of [/ID real/,/no carga automáticamente cuerpos ni archivos vecinos/,/no permisos, estado ni un pipeline/,/No cargues todo el catálogo/])assert.match(skills,clause);
+  for(const clause of [/sol_status.*paginados/,/itemId recupera un detalle/,/no abren el contenido de archivos citados/])assert.match(section('context_and_continuity'),clause);
+});
+
+test('entrega diferencia resultados, evidencia y aceptación live no observada',()=>{
+  const body=section('recovery_and_finish');
+  assert.match(body,/resultado útil de cada frente, evidencia ejecutada y no ejecutada/);
+  assert.match(body,/checks offline.*conducta autónoma.*aprobación live/);
 });

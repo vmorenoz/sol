@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import { parseJSONC, upsertJSONC, editJSONC } from './jsonc.mjs';
 import { safePath, atomicWrite } from './fs.mjs';
 import { SOL_AGENT_IDS, resolveModelAssignments, detectModelProfile } from './model-profiles.mjs';
@@ -56,12 +57,34 @@ function readModel(model, id) {
   if (!/^[A-Za-z0-9._-]+\/[A-Za-z0-9._/-]+(?:#[A-Za-z0-9._-]+)?$/.test(selector)) throw new Error(`La preferencia model de ${id} tiene una referencia no admitida; edítala manualmente.`);
   return selector;
 }
+// Installer-only consolidation: no precedence guessing or concatenating arrays.
+// Existing JSONC comments survive; both original documents are backed up by install.
+function mergeComplementaryJSONC(jsoncText, jsonText) {
+  const primary = parseJSONC(jsoncText), secondary = parseJSONC(jsonText);
+  const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!object(primary) || !object(secondary)) throw new Error('La raíz de la configuración OpenCode debe ser un objeto.');
+  const additions = [];
+  const visit = (left, right, keys = []) => {
+    for (const [key, value] of Object.entries(right)) {
+      const location = [...keys, key];
+      if (!own(left, key)) additions.push({ path: location, value });
+      else if (isDeepStrictEqual(left[key], value)) continue;
+      else if (object(left[key]) && object(value)) visit(left[key], value, location);
+      else throw new Error(`Conflicto entre opencode.json y opencode.jsonc en ${JSON.stringify(location)}. Decide qué valor conservar; no se modificó ninguno ni se muestran sus valores.`);
+    }
+  };
+  visit(primary, secondary);
+  return upsertJSONC(jsoncText, additions);
+}
 function readConfig(options) {
   const home = path.resolve(options.homeDir || os.homedir()), paths = resolvePaths(home, options.env || process.env);
   const jsonc = readBytes(home, paths.configRelativePath), json = readBytes(home, paths.jsonRel);
-  if (jsonc && json) throw new Error('Existen opencode.json y opencode.jsonc; la precedencia es ambigua. No se modificó ninguno.');
-  const legacy = !!json, sourceRel = legacy ? paths.jsonRel : paths.configRelativePath, rawBytes = legacy ? json : jsonc;
-  const raw = rawBytes?.toString('utf8') ?? null;
+  const overlay = relative => options.sourceTexts instanceof Map ? options.sourceTexts.get(relative) : options.sourceTexts?.[relative];
+  if (jsonc && json && !options.mergeComplementary) throw new Error('Existen opencode.json y opencode.jsonc; la precedencia es ambigua. No se modificó ninguno.');
+  const legacy = !!json, sourceRel = jsonc ? paths.configRelativePath : legacy ? paths.jsonRel : paths.configRelativePath, rawBytes = jsonc ?? json;
+  const jsoncText = overlay(paths.configRelativePath) ?? jsonc?.toString('utf8');
+  const jsonText = overlay(paths.jsonRel) ?? json?.toString('utf8');
+  const raw = jsonc && json ? mergeComplementaryJSONC(jsoncText, jsonText) : (jsonc ? jsoncText : jsonText) ?? null;
   const value = raw === null ? {} : parseJSONC(raw);
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('La raíz de la configuración OpenCode debe ser un objeto.');
   if (value.agents !== undefined && (!value.agents || typeof value.agents !== 'object' || Array.isArray(value.agents))) throw new Error('agents debe ser un objeto; se requiere corregir la configuración antes de continuar.');
@@ -100,26 +123,28 @@ function updateConfig(raw, edits) {
   return text;
 }
 
-export function planModelConfig({ homeDir = os.homedir(), env = process.env, profile = 'inherited', overrides = {}, catalog = [], expectedRevision, cleanupAgentIds = [], sourceTexts = new Map() } = {}) {
-  const state = readConfig({ homeDir, env });
+export function planModelConfig({ homeDir = os.homedir(), env = process.env, profile = 'inherited', overrides = {}, catalog = [], expectedRevision, cleanupAgentIds = [], sourceTexts = new Map(), mergeComplementary = false, preserveAssignments = false } = {}) {
+  const state = readConfig({ homeDir, env, sourceTexts, mergeComplementary });
   if (expectedRevision !== undefined && expectedRevision !== state.revision) throw new Error('La configuración cambió desde que se leyó; vuelve a consultar y reintenta.');
   for (const id of cleanupAgentIds) if (typeof id !== 'string' || !idRE.test(id)) throw new Error(`Agente fuera del alcance de limpieza: ${id}.`);
   const knownCurrent = Object.fromEntries(SOL_AGENT_IDS.map(id => [id, state.assignments[id]]));
-  const assignments = resolveModelAssignments({ profile, current: knownCurrent, overrides, catalog });
+  if (preserveAssignments && Object.keys(overrides).length) throw new Error('Para cambiar modelos especifica un perfil explícito.');
+  const assignments = preserveAssignments ? knownCurrent : resolveModelAssignments({ profile, current: knownCurrent, overrides, catalog });
+  if (preserveAssignments) profile = detectModelProfile(assignments);
   const ids = [...new Set([...state.agentIds, ...cleanupAgentIds])];
-  const changes = ids.map(agentId => ({ agentId,
+  const changes = preserveAssignments ? [] : ids.map(agentId => ({ agentId,
     before: own(state.assignments, agentId) ? state.assignments[agentId] : readModel(state.value.agents?.[agentId]?.model, agentId),
     after: SOL_AGENT_IDS.includes(agentId) ? assignments[agentId] : null })).filter(change => change.before !== change.after);
-  const overlay = sourceTexts instanceof Map ? sourceTexts.get(state.sourceRel) : sourceTexts?.[state.sourceRel];
-  const base = overlay ?? state.raw ?? '{\n  "$schema": "https://opencode.ai/config.json",\n}\n';
+  const hasOverlay = sourceTexts instanceof Map ? sourceTexts.has(state.sourceRel) : own(sourceTexts || {}, state.sourceRel);
+  const base = state.raw ?? '{\n  "$schema": "https://opencode.ai/config.json",\n}\n';
   const output = updateConfig(base, changes);
   const files = new Map();
-  if (output !== base || state.legacy || overlay !== undefined) files.set(state.configRelativePath, output);
-  const removals = state.legacy ? [state.sourceRel] : [];
+  if (output !== base || state.legacy || hasOverlay) files.set(state.configRelativePath, output);
+  const removals = state.legacy ? [state.jsonRel] : [];
   const expectedHashes = { [state.configRelativePath]: state.jsoncHash, [state.jsonRel]: state.jsonHash, [MANIFEST]: hashBytes(state.manifest.bytes) };
   return { homeDir: state.home, root: state.root, configPath: state.configPath, configRelativePath: state.configRelativePath,
-    revision: state.revision, profile, assignments, changes, files, removals, expectedHashes,
-    modelConfig: { path: state.configRelativePath, agentIds: SOL_AGENT_IDS.filter(id => assignments[id] !== null) }, migration: state.legacy };
+    revision: state.revision, profile, preservedModels: preserveAssignments, assignments, changes, files, removals, expectedHashes,
+    modelConfig: { path: state.configRelativePath, agentIds: preserveAssignments ? state.manifest.tracked.filter(id => state.assignments[id] != null) : SOL_AGENT_IDS.filter(id => assignments[id] !== null) }, migration: state.legacy };
 }
 
 function validatePlanPath(home, relative) {

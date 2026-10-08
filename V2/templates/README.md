@@ -1,64 +1,42 @@
 # Catálogo de plantillas · versión 1.0
-<!-- Versiones de formato narrativo; no equivalen a versión de schema/API Work. -->
-Una plantilla define la entrega, no obliga a crear el archivo. Las secciones marcadas
-«condicional» se omiten si no aplican; no rellenar con ficción. Los marcadores `{{...}}`
-son instrucciones de autoría, no un lenguaje ejecutable. Una entrega final no conserva
-marcadores pendientes: usa «pendiente» con motivo y responsable cuando falte una decisión.
+
+Las plantillas ayudan a producir contenido útil; no obligan a crear archivos, rellenar secciones vacías ni seguir encabezados fijos. Adapta párrafos, listas y tablas a cada encargo. Un resultado pequeño puede ser una respuesta Markdown; un artefacto solicitado tiene una sola entrega y un enlace, sin informe duplicado. Sustituye los marcadores por contenido real o una limitación concreta.
 
 | Archivo | Autor habitual | Uso |
 |---|---|---|
-| project.md | Sol con hallazgos del Explorador | Vista selectiva de contexto; anclas `<!-- claim:ID -->` / `<!-- source:ID -->` deben coincidir con el ledger del Work para mapeo validable. Un documento previo sin esa procedencia puede seguir siendo útil, pero se considera legacy_unverified hasta refresco selectivo. |
-| work.md | Sol | Narrativa opcional del trabajo; estado canónico en work.json |
-| objective.json / task.json | Sol | Ejemplos de datos y esquemas asociados |
-| spec.md | Researcher / Planificador, según encargo | Comportamiento y contratos |
-| plan.md | Planificador | Plan maestro y subplan: mismo formato |
-| research.md | Researcher | Triage de evidencia, alternativas, preguntas y unknowns |
-| exploration.md | Explorador | Mapa real del repositorio |
-| implementation.md | Ejecutor | Cambios y comprobaciones del encargo |
-| review.md | Auditores y Code Reviewer | Hallazgos y límites de revisión |
-| evidence.md / evidence.json | QA | Verificación documentada y referencias estructuradas |
-| ui-review.md | UI Auditor | Revisión visual, funcional y accesible |
-| decision.md | Sol | Decisión humana/técnica confirmada |
+| project.md | Explorador; Sol integra y registra | Mapa selectivo con anclas de claims/fuentes para el ledger |
+| work.md | Sol | Narrativa opcional; estado canónico en Work |
+| spec.md | Researcher o Planner según encargo | Comportamiento, aceptación y contratos |
+| plan.md | Planner | Estrategia y tareas propuestas, sin segundo tablero |
+| research.md | Researcher | Hallazgos, procedencia, alternativas y decisión residual |
+| exploration.md | Explorador | Realidad del repositorio y relaciones relevantes |
+| implementation.md | Executor | Cambios y comprobaciones cuando se pide documento |
+| review.md | Auditores y Code Reviewer | Hallazgos priorizados y límites |
+| evidence.md | QA u otro rol que realiza la comprobación | Evidencia observada y cobertura |
+| ui-review.md | UI Auditor | Interacción, estados y accesibilidad del alcance |
+| decision.md | Sol | Decisión con procedencia y razón |
 | delivery.md | Sol | Entrega preparada para revisión humana |
-| delegation.json / delegation.md | Sol | Encargo autosuficiente al especialista |
-| result.json | Cada especialista | Respuesta compacta, nunca una instrucción para ejecutar |
+| delegation.md | Sol | Encargo autosuficiente en Markdown flexible |
+| objective.json / task.json / evidence.json | Sol / core | Ejemplos de datos tipados internos; no formato exigido al especialista |
+| delegation.json / result.json | Lectura y validación legacy opt-in | Compatibilidad con registros antiguos; no transporte obligatorio de nuevas delegaciones |
+| state.json / work.json / history-entry.json | Core | Ejemplos de estado, nunca copiar sobre datos reales |
 
-## Versiones y coordinación de discovery/delivery
+## Conversación, documentos y estado
 
-Los marcadores vigentes son `project@1.0`, `research@1.0`, `spec@1.0`, `plan@1.0`, `decision@1.0`, `evidence@1.0`, `delivery@1.0` (y los demás encabezados correspondientes). Son formatos Markdown narrativos, no identificadores de schema ni enums canónicos. Las secciones opcionales se omiten si no aplican; un archivo no es obligatorio solo porque tenga plantilla.
+Encargos y respuestas son Markdown natural tanto con Work como sin persistencia. Conservan objetivo, alcance, evidencia y referencias suficientes, sin parser por títulos. Sol correlaciona con la llamada nativa y traduce solo hechos verificados a las tools tipadas. Si falta un dato esencial, pide ese dato; no inventa IDs, autoría, ejecución ni aprobación.
 
-En metadata, Work/revision/task/AC IDs existentes y tools Sol son autoridad. `decision.md`, `evidence.md` y `delivery.md` no duplican status ni guardan el registro canónico. Nunca inventar request payloads con campos solo porque una plantilla los muestre.
+Work/revisión/taskIds/criterionIds existentes y el contrato publicado de tools son autoridad. Consulta los schemas efectivos de `schemas/`; los marcadores narrativos `project@1.0`, `research@1.0`, `spec@1.0`, `plan@1.0`, `decision@1.0`, `evidence@1.0` y `delivery@1.0` no son versiones de API. Project conserva statements y anclas exactas donde el validador de mapeo las necesita; esa necesidad técnica no impone un formato universal a las respuestas.
 
-Acciones discovery tipadas anunciadas por el contrato de integración actual: `discovery.source.add`, `discovery.claim.add`, `discovery.assumption.add`, `discovery.assumption.resolve`, `discovery.question.add`, `discovery.question.answer`, `discovery.decision.add`, `discovery.decision.supersede`. Las preguntas/resoluciones deben preservar procedencia, decisión previa y razón de cambio según el schema efectivo. La distinción final entre resolución por investigación y decisión humana queda condicionada al campo/API de A; no inventar `resolutionKind` ni payload.
+Sol registra discovery con `sol_work_apply`: fuentes, claims, supuestos, preguntas y decisiones. Preguntas distinguen `resolutionKind: human_decision | investigation` según el schema vigente. Los `taskIds` y `criterionIds` opcionales de preguntas, supuestos y decisiones acotan el impacto; ausencia de ambos significa global, no ausencia de bloqueo. Nunca añadas campos a partir de una tabla narrativa.
 
-Acciones de shipping anunciadas por contrato: `shipping.intent.record`, `shipping.approval.record`, `shipping.intent.invalidate`, `shipping.receipt.record`. Intent/preflight, consentimiento reportado y recibo observado son eventos distintos. No son identidad autenticada, auth token, permiso del host, autorización implícita por Work ni evidencia de efecto remoto. Ver `skills/sol-ship/references/preflight-and-authorization.md`; la implementación/preflight de Owner B y la aceptación de tools integradas quedan separadas.
+Shipping usa `sol_ship_preflight` y, tras consentimiento para contenido/destino/acciones, `sol_ship_authorize`. `shipping.approval.record` es interno y no se invoca mediante `sol_work_apply`. Un registro, intención o recibo no prueba por sí solo identidad, permiso o efecto externo. Ver la skill sol-ship y su referencia de autorización.
 
-El plan permite narrar tipos `research`, `exploration`, `specification`, `planning`, `implementation`, `verification`, `delivery`, `shipping`, pero aceptar esos task.kind depende del schema vigente de A, no de esta tabla Markdown.
+## Evidencia e historial
 
-Las rutas de los ejemplos son relativas a la raíz del proyecto. Sustituirlas por rutas
-reales; el esquema valida estructura, no inventa el contenido. No duplicar estados de
-tareas en los planes. Cada plan enlaza los IDs de tareas canónicos tras su aceptación.
+Una entrega histórica solicitada recibe ruta única; una corrección enlaza la anterior y no la reemplaza. Código y documentos vivos siguen editables dentro del scope. No hay obligación de producir la pareja result.json/report.md. Los registros JSON históricos se preservan y pueden consultarse.
 
-`state.json` y `history-entry.json` ilustran la proyección global y un cierre. No copiar ejemplos al estado real: las utilidades crean y sincronizan esos archivos a partir del work canónico.
+Indica referencias puntuales, base relevante, método, comandos/directorio y resultados reales. Sol calcula los hashes requeridos al registrar. Un informe, fingerprint o validación de schema no demuestra ejecución. Distingue static/manual/executed/not_run, datos sintéticos/mocks frente a conectividad y PASS histórico frente a aceptación vigente. La cobertura se evalúa sobre los criterios/tareas asignados; el cierre global requiere todos los aplicables.
 
-## Profundidad y revisión humana
+Para auditorías, traza solo flujos relevantes y separa realidad local, intención documentada y despliegue observado. Una búsqueda parcial sin resultado no demuestra ausencia. Mantén límites y contradicciones visibles. Retirar conocimiento o archivos exige alcance autorizado; no maximices borrados ni pierdas fuentes únicas al resumir.
 
-Una corrección pequeña requiere párrafos breves y referencias precisas, no todos los
-documentos. Para varios módulos detalla contratos, dependencias y evidencia; no añadas
-secciones vacías para aparentar cobertura. Referencia código como `ruta:línea` más su
-revisión cuando sea relevante; comandos con directorio y resultado real; documentación
-con enlace oficial y fecha. Los IDs de tarea/criterio apuntan al work canónico.
-
-Antes de finalizar, el autor y Sol revisan que las instrucciones de plantilla fueron
-sustituidas por contenido específico. «No aplica» o «pendiente» requieren motivo. No
-marcar como incompleto código legítimo que usa dobles llaves. No se añade un detector
-léxico ni un evaluador automático de calidad. Para los contratos de evidencia y el flujo
-de trabajo, consulta `docs/INVENTORY.md` y `docs/WORKFLOW.md` en la instalación global.
-
-## Trazabilidad, historial y auditorías (guía condicional)
-
-- Un `result.json` y su informe pertenecen a una entrega/delegationId y son históricos: output único, no overwrite. Una corrección recibe nuevo delegationId y output dentro del scope; referencia el reporte anterior en contexto/Markdown. No inventar campos de schema ni alterar artifacts/changedFiles para fingir una nueva entrega. El código y otros archivos vivos siguen sus permisos normales.
-- Antes de editar, establece baseline suficiente en el scope autorizado; HEAD, conteos o hashes aislados no demuestran checkout limpio ni preservación semántica. No copiar secretos ni recorrer diffs globales; separar preexistente, propio e indeterminado.
-- Para aceptación cubre todos los criterios/tareas pertinentes (covered con evidencia vigente, partial, uncovered, blocked, unverifiable), no solo la última subtask. Informe narrativo, result del runtime, `sol_work_validate` o fingerprint no prueban por sí solos ejecución. Reporta únicamente checks observados; static/manual/not_run no son executed ni aceptación live. No exigir E2E sin necesidad y autorización.
-- En auditorías de app, traza flujos críticos solo donde sea pertinente (entrada→servicio→contrato→persistencia/backend→resultado), con fuentes y límites. Estados: demo, implementado parcial, conectado no verificado, ejecutado/verificado para alcance observado, ausente o desconocido. No hallado en búsqueda acotada significa desconocido, no ausencia global. Presencia de código/tests no equivale a ruta usable/PASS.
-- Clasifica conocimiento como vigente, contexto necesario, histórico, obsoleto o duplicado para reducir ruido/contradicción. Separar/retirar material exige alcance autorizado, enlaces que preserven contexto necesario y cuidado de fuentes únicas; no volcar snapshots en mega-doc ni forzar un conteo de borrados. “Actual/vigente” solo si se contrastó; snapshots llevan fecha/origen y nombre histórico.
+Consulta `docs/ORCHESTRATION.md` y `docs/DISCOVERY.md` para el criterio de uso. La estructura de un documento no prueba calidad del diálogo ni conducta live de OpenCode.

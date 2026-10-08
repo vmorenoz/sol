@@ -470,6 +470,8 @@
             "properties": {
               "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
               "statement": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "taskIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
+              "criterionIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
               "impact": {"enum": ["material", "non_material"]},
               "validation": {"type": "string", "minLength": 1, "maxLength": 2000},
               "status": {"enum": ["open", "validated", "rejected"]},
@@ -485,6 +487,8 @@
               "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
               "question": {"type": "string", "minLength": 1, "maxLength": 2000},
               "whyItMatters": {"type": "string", "minLength": 1, "maxLength": 2000},
+              "taskIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
+              "criterionIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
               "impact": {"enum": ["material", "non_material"]},
               "resolutionKind": {"enum": ["human_decision", "investigation"]},
               "sourceIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
@@ -499,6 +503,8 @@
           "items": {"type": "object", "additionalProperties": false,
             "properties": {
               "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "taskIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
+              "criterionIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
               "questionIds": {"type": "array", "maxItems": 50, "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}},
               "statement": {"type": "string", "minLength": 1, "maxLength": 2000},
               "rationale": {"type": "string", "minLength": 1, "maxLength": 2000},

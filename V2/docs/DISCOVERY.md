@@ -13,7 +13,7 @@ Sol debe poder explorar una necesidad con profundidad sin convertir la conversac
 5. Adaptar el seguimiento: registrar la respuesta y su autor, aclarar solo lo material que persiste y re-investigar hechos que la respuesta ponga en duda. No repetir confirmaciones resueltas sin evidencia nueva.
 6. Entregar al mismo Sol. No hay interlocutor investigador paralelo, cuotas, puntuación, rondas obligatorias ni fase universal de research.
 
-La suficiencia se explica por objetivo/aceptación/límites entendidos, hechos decisivos contrastados o marcados desconocidos, decisiones abiertas/confirmadas identificadas y próximo paso claro. Investigación, exploración, especificación y planificación pueden existir precisamente para resolver una incógnita. Solo queda bloqueada la implementación/acción dependiente; trabajo independiente continúa.
+La suficiencia se explica para el próximo paso: objetivo/aceptación/límites pertinentes entendidos, hechos decisivos contrastados o marcados desconocidos, decisiones necesarias resueltas y próximo paso claro. No exige resolver todas las preguntas futuras. Investigación, exploración, especificación y planificación pueden existir precisamente para resolver una incógnita. Solo queda bloqueada la implementación/acción dependiente; trabajo independiente continúa.
 
 ## Evaluación de conversaciones (protocolo, no test automático)
 
@@ -45,7 +45,9 @@ Estos casos son prompts para evaluación por una persona con transcripción y ev
 
 El caso documentado `skills/sol-discovery/references/evaluation-cases.json` registra el ejercicio de academias multiproyecto como resumen aportado por el usuario, identifica la microconfirmación observada y explicita el siguiente gris material. No es una transcripción verbatim ni respuesta de producto; incluye limitaciones, contraejemplos y obligaciones futuras sin inventar un tercer turno.
 
-## Evidencia de evaluación nativa observada
+## Evidencia histórica de evaluación nativa observada
+
+Estos registros preceden al rediseño actual de prompts y no se reejecutaron para este cambio. No constituyen validación de los nuevos prompts. Los seis ejemplos nuevos de [orquestación](ORCHESTRATION-EXAMPLES.md) tampoco son ejecuciones.
 
 El registro local del operador `/private/var/folders/w0/bxwjhlfn5254znsw3cdxf52h0000gn/T/opencode/native-acceptance-tejU2F/evaluation-record.json` consigna sesiones reales separadas con OpenCode 2.0.22, agente Sol y `openai/gpt-6-luna` en perfil privado. Los cuatro resultados siguientes son **PASS registrados para estos fixtures y sus criterios**, no una puntuación ni una garantía general. La fuente contiene observaciones y resúmenes parciales de turnos, no transcripciones completas; no se reconstruyen respuestas de Sol ausentes.
 
@@ -63,3 +65,9 @@ La evaluación nativa es independiente de `npm run verify`: su estado `nativeRun
 ## Artefactos
 
 Se reutilizan Work, decisión, `research.md`, `spec.md`, `plan.md`, `exploration.md` y evidencia existentes según valor. No se crea un segundo registro de estado ni se fuerza un informe para toda conversación. La plantilla research diferencia procedencia/vigencia, hipótesis, opciones, recomendación, decisiones y límites. Ver [catálogo de plantillas](../templates/README.md) y [flujo de trabajo](WORKFLOW.md) para ownership y límites de metadata. Estas guías y sus tests offline no demuestran diálogo autónomo o aceptación live.
+
+## Contrato actual de conversación y alcance
+
+Sol y sus especialistas usan Markdown natural flexible, con hallazgo primero, contexto puntual y evidencia verificable; no JSON obligatorio, parser por encabezados ni report/result duplicados. Sol registra el estado tipado mediante tools después de verificar. Las decisiones, preguntas y supuestos pueden referenciar taskIds/criterionIds reales para bloquear solo su alcance; sin scope son globales. Cierre global y readiness del próximo acto son juicios distintos.
+
+Un plan-only se entrega y espera aprobación para implementar. Una implementación ya autorizada continúa con el siguiente paso suficiente sin pedir «continúa». La ausencia de persistencia no autoriza ni impide por sí misma un cambio local explícito; no se inicializa .sol automáticamente. Ver [orquestación](ORCHESTRATION.md) y [capacidades opcionales](../skills/sol-discovery/references/capability-selection.md).

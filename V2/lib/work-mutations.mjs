@@ -2,7 +2,7 @@ import {closeWork,createWork,readWork,reopenWork,recordContextSource,saveShippin
 import {assertID,fingerprint,now,safePath} from './fs.mjs';
 import {workReceipt} from './receipts.mjs';
 import {assertSchema,schema} from './schema.mjs';
-import {bindEvidence,deriveWorkReadiness,evidenceBindingsCurrent,workContractDigest} from './contracts.mjs';
+import {bindEvidence,deriveTaskReadiness,evidenceBindingsCurrent,workContractDigest} from './contracts.mjs';
 
 function invalidateContracts(work,{criterionIds=[],taskIds=[]},reason){
   const criteria=new Set(criterionIds),tasks=new Set(taskIds);let changed=true;
@@ -69,9 +69,9 @@ export function applyWorkMutation(root,{workId,expectedRevision,actions}) {
         assertID(action.task?.id);if(candidate.tasks.some(t=>t.id===action.task.id))throw new Error(`Tarea duplicada: ${action.task.id}`);
         const task=structuredClone(action.task);task.kind=task.kind||'implementation';task.contractRevision=task.contractRevision||1;
         task.title=text(task.title,'task.title',{max:300});
-        if(task.kind==='implementation'&&task.status==='in_progress'&&!deriveWorkReadiness(candidate).implementationReady)throw new Error(`No se puede iniciar implementación: ${deriveWorkReadiness(candidate).implementationReasons.join('; ')}`);
         candidate.tasks.push(task);
-        if(task.status==='done'){if(task.kind==='implementation'&&!deriveWorkReadiness(candidate).implementationReady)throw new Error(`No se puede completar implementación: ${deriveWorkReadiness(candidate).implementationReasons.join('; ')}`);assertTaskAcceptanceFresh(root,candidate,task);}
+        if(task.kind==='implementation'&&task.status==='in_progress'&&!deriveTaskReadiness(candidate,task.id).implementationReady)throw new Error(`No se puede iniciar implementación: ${deriveTaskReadiness(candidate,task.id).implementationReasons.join('; ')}`);
+        if(task.status==='done'){if(task.kind==='implementation'&&!deriveTaskReadiness(candidate,task.id).implementationReady)throw new Error(`No se puede completar implementación: ${deriveTaskReadiness(candidate,task.id).implementationReasons.join('; ')}`);assertTaskAcceptanceFresh(root,candidate,task);}
         changes.push(`${task.id} agregada`);break;
       }
       case 'task.update': {
@@ -85,7 +85,7 @@ export function applyWorkMutation(root,{workId,expectedRevision,actions}) {
         if(patch.kind!==undefined)task.kind=patch.kind;
         if(patch.summary!==undefined)task.summary=text(patch.summary,'task.summary',{required:false,max:2000});
         for(const key of ['criterionIds','dependsOn','resources','acceptance','writeScope'])if(patch[key]!==undefined)task[key]=list(patch[key],`task.${key}`).map(v=>text(v,`task.${key}`,{max:1000}));
-        if(task.status==='in_progress'&&(task.kind||'implementation')==='implementation'&&!deriveWorkReadiness(candidate).ready)throw new Error(`No se puede iniciar implementación: ${deriveWorkReadiness(candidate).reasons.join('; ')}`);
+        if(task.status==='in_progress'&&(task.kind||'implementation')==='implementation'&&!deriveTaskReadiness(candidate,task.id).ready)throw new Error(`No se puede iniciar implementación: ${deriveTaskReadiness(candidate,task.id).reasons.join('; ')}`);
         if(['title','kind','criterionIds','dependsOn','writeScope','resources','acceptance'].some(k=>patch[k]!==undefined))invalidateContracts(candidate,{taskIds:[task.id]},`Contrato de tarea ${task.id} actualizado`);
         changes.push(`${task.id} actualizada`);break;
       }
@@ -94,8 +94,8 @@ export function applyWorkMutation(root,{workId,expectedRevision,actions}) {
         assertID(action.taskId);const task=candidate.tasks.find(t=>t.id===action.taskId);if(!task)throw new Error(`Tarea inexistente: ${action.taskId}`);
         if(!['pending','in_progress','blocked','paused','done','cancelled'].includes(action.status))throw new Error('Estado de tarea inválido');
         task.status=action.status;if(action.summary!==undefined)task.summary=text(action.summary,'task.summary',{max:2000});
-        if(action.status==='in_progress'&&(task.kind||'implementation')==='implementation'&&!deriveWorkReadiness(candidate).implementationReady)throw new Error(`No se puede iniciar implementación: ${deriveWorkReadiness(candidate).implementationReasons.join('; ')}`);
-        if(action.status==='done'){if((task.kind||'implementation')==='implementation'&&!deriveWorkReadiness(candidate).implementationReady)throw new Error(`No se puede completar implementación: ${deriveWorkReadiness(candidate).implementationReasons.join('; ')}`);assertTaskAcceptanceFresh(root,candidate,task);}
+        if(action.status==='in_progress'&&(task.kind||'implementation')==='implementation'&&!deriveTaskReadiness(candidate,task.id).implementationReady)throw new Error(`No se puede iniciar implementación: ${deriveTaskReadiness(candidate,task.id).implementationReasons.join('; ')}`);
+        if(action.status==='done'){if((task.kind||'implementation')==='implementation'&&!deriveTaskReadiness(candidate,task.id).implementationReady)throw new Error(`No se puede completar implementación: ${deriveTaskReadiness(candidate,task.id).implementationReasons.join('; ')}`);assertTaskAcceptanceFresh(root,candidate,task);}
         if(action.status==='cancelled'&&!task.summary.trim())throw new Error('Tarea cancelada requiere motivo');
         changes.push(`${task.id} ${action.status==='done'?'completada':action.status}`);break;
       }

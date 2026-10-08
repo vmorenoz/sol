@@ -2,6 +2,22 @@ import os from "node:os"
 import path from "node:path"
 import fs from "node:fs"
 import { pathToFileURL } from "node:url"
+import { formatStatusPage, formatWorkView, pageBounds, workSections } from "./work-views.mjs"
+
+// Narrow structural surface from the official OpenCode v2 documentation (2026-10-08).
+// This is not a claim that a published SDK version or a live host has been tested.
+type WorkQuery = { section?: string; offset?: number; limit?: number; itemId?: string; taskId?: string; criterionId?: string }
+type NativeSession = { id?: string; sessionID?: string; location?: { directory?: string }; model?: { providerID: string; id: string; variant?: string } }
+type NativeModel = { providerID: string; id: string; name?: string; enabled: boolean; status: string; variants?: readonly { id: string }[] }
+type NativeToolContext = { sessionID: string; signal: AbortSignal }
+type NativeTool = { name: string; description: string; input: unknown; execute(input: unknown, context: NativeToolContext): Promise<{ content: string }> }
+type NativeToolEditor = { add(tool: NativeTool): void }
+type OpenCodeV2Context = {
+  app?: { version: string }
+  tool: { transform(edit: (editor: NativeToolEditor) => void): Promise<unknown> }
+  session: { get(input: { sessionID: string }): Promise<NativeSession> }
+  model: { list(input: { location: { directory: string } }): Promise<{ data: readonly NativeModel[] }> }
+}
 
 const solRoot = path.join(os.homedir(), ".sol", "lib")
 const core = async (name: string) => import(pathToFileURL(path.join(solRoot, name)).href)
@@ -118,51 +134,70 @@ const publicWorkUpdateToolSchema = makePublicWorkUpdateSchema(workUpdateToolSche
 
 export default {
   id: "sol",
-  async setup(ctx: any) {
-    const register = (editor: any, name: string, description: string, input: unknown, run: (args: any, root: string, session?: any) => Promise<string>) => {
-      editor.add({ name, description, input, async execute(args: any, context: { sessionID: string; signal: AbortSignal }) {
+  async setup(ctx: OpenCodeV2Context) {
+    const { getSolVersionInfo, getInstalledSolVersionInfo } = await core("version.mjs")
+    const loadedVersion = Object.freeze({ ...getSolVersionInfo() })
+    const hostVersion = ctx.app?.version || "no disponible"
+
+    const register = (editor: NativeToolEditor, name: string, description: string, input: unknown, run: (args: any, root: string, session?: NativeSession) => Promise<string>) => {
+      editor.add({ name, description, input, async execute(args: unknown, context: NativeToolContext) {
         try {
           if (!context?.sessionID) throw new Error("OpenCode no proporcionó la sesión actual; no se modificó ningún archivo.")
           const session = await ctx.session.get({ sessionID: context.sessionID })
           const activeDirectory = session.location?.directory
-          if (!activeDirectory) throw new Error("OpenCode no proporcionó el directorio de esta sesión; no se modificó ningún archivo.")
+          if (typeof activeDirectory !== "string" || !path.isAbsolute(activeDirectory)) throw new Error("OpenCode no proporcionó el directorio de esta sesión; no se modificó ningún archivo.")
           return { content: await run(args, path.resolve(activeDirectory), { ...session, sessionID: context.sessionID }) }
         }
         catch (error) { return { content: `No se completó ${name}: ${(error as Error).message}` } }
       } })
     }
-    const readinessSummary = async (work: any) => {
-      const { deriveWorkReadiness } = await core("contracts.mjs")
-      const readiness = deriveWorkReadiness(work)
-      const reasons = readiness.implementationReasons?.length ? readiness.implementationReasons.join("; ") : "ninguna"
-      return `Discovery para implementar: ${readiness.implementationReady ? "sin pendientes" : "pendiente"}\nDiscovery para cerrar: ${readiness.completionReady ? "sin pendientes" : "pendiente"}\nAclaración: No acredita tareas, evidencia ni aceptación del cierre\nMotivos: ${reasons}\nSkills sugeridas (no cargadas automáticamente): ${(readiness.suggestedSkills || []).join(", ") || "ninguna"}`
+    const readinessSummary = async (work: any, taskId?: string) => {
+      const { deriveWorkReadiness, deriveTaskReadiness } = await core("contracts.mjs")
+      const globalReadiness = deriveWorkReadiness(work)
+      const readiness = taskId ? deriveTaskReadiness(work, taskId) : globalReadiness
+      const pending = readiness.implementationReasons || []
+      const reasons = pending.length ? pending.slice(0, 10).join("; ") + (pending.length > 10 ? `; ${pending.length - 10} motivos más: consulta secciones questions, assumptions, decisions y pendingDecisions` : "") : "ninguna"
+      return `${taskId ? `Ámbito de implementación: ${taskId} y dependencias · tarea habilitada: ${readiness.ready ? "sí" : "no"}\n` : "Ámbito de implementación: global; consulta taskId para una rama independiente\n"}Discovery para implementar: ${readiness.implementationReady ? "sin pendientes" : "pendiente"}\nDiscovery para cerrar: ${globalReadiness.completionReady ? "sin pendientes" : "pendiente"} (Work completo)\nAclaración: No acredita tareas, evidencia ni aceptación del cierre\nMotivos: ${reasons}\nSkills sugeridas (no cargadas automáticamente): ${(readiness.suggestedSkills || []).join(", ") || "ninguna"}`
     }
-    await ctx.tool.transform((editor: any) => {
+    await ctx.tool.transform((editor: NativeToolEditor) => {
+      // Version diagnosis is intentionally independent of workspace/session state.
+      editor.add({ name: "sol_version", description: "Identifica el payload cargado por esta instancia y la instalación actual; indica si requiere recarga.", input: object({}, []), async execute() {
+        let installed
+        try { installed = getInstalledSolVersionInfo() }
+        catch (error) { return { content: `Sol cargado: ${loadedVersion.version || "no disponible"} · build ${loadedVersion.buildHash || "no disponible"}\nInstalación actual: no legible (${(error as Error).message}).\nreloadRequired: unknown · no se pudo comparar. OpenCode: ${hostVersion}.` } }
+        const keys = ["version", "buildHash", "sourceCommit", "baseCommit"]
+        const comparable = Boolean(installed && loadedVersion.buildHash && installed.buildHash)
+        const knownDifference = installed && ["version", "sourceCommit", "baseCommit"].some(key => loadedVersion[key] && installed[key] && loadedVersion[key] !== installed[key])
+        const reloadRequired = comparable ? keys.some(key => loadedVersion[key] !== installed[key]) : knownDifference ? true : null
+        const describe = (value: any) => value ? `${value.version || "no disponible"} · build ${value.buildHash || "no disponible"} · commit ${value.sourceCommit || "no verificado"} · base ${value.baseCommit || "no disponible"}` : "sin manifiesto verificable"
+        return { content: `Sol cargado por esta instancia: ${describe(loadedVersion)}\nSol instalado actualmente: ${describe(installed)}\nOpenCode informado por el host: ${hostVersion}\nreloadRequired: ${reloadRequired === null ? "unknown" : reloadRequired}${reloadRequired === true ? " · recarga/reinicia OpenCode para cargar la instalación actual" : reloadRequired === null ? " · no se puede acreditar igualdad de builds" : " · coincide el payload identificado"}\nLa invocación identifica esta instancia; no certifica otras sesiones ni una aceptación live completa.` }
+      } })
       register(editor, "sol_workspace_prepare", "Inicializa el espacio Sol del workspace activo; conserva cualquier dato existente.", object({}, []), async (_args, root) => {
         const { prepareWorkspace } = await core("workspace.mjs");
         const result = prepareWorkspace(root)
         return result.existingWorkspace ? "Sol ya estaba preparado; no se modificaron los datos existentes." : "✓ Sol preparó el workspace con estado, historial y documentos base."
       })
-      register(editor, "sol_status", "Consulta el índice compacto del workspace actual, sin recorrer trabajos.", object({}, []), async (_args, root) => {
-        if (!fs.existsSync(path.join(root, ".sol", "state.json"))) return "Sol no está preparado en este workspace; prepara solo si existe un encargo concreto."
-        const { readStatus } = await core("work-mutations.mjs"); const s = readStatus(root)
-        const focus = s.works.find((w: any) => w.id === s.focusWorkId)
-        return focus ? `Sol · ${focus.id} ${focus.status} · ${focus.progress.done}/${focus.progress.total}\n${focus.objective}\nSiguiente: ${focus.nextAction || "sin acción registrada"}` : `Sol · ${s.works.length} trabajos abiertos · sin foco${s.works.length ? `\n${s.works.slice(0, 10).map((w: any) => `${w.id} ${w.status} · ${w.lastProgress}`).join("\n")}${s.works.length > 10 ? `\n… y ${s.works.length - 10} más` : ""}` : ""}`
+      const pagination = { offset: { type: "integer", minimum: 0, default: 0 }, limit: { type: "integer", minimum: 1, maximum: 20, default: 10 } }
+      register(editor, "sol_status", "Consulta todos los frentes del índice compacto por páginas; el foco no oculta otros trabajos.", object(pagination, []), async ({ offset = 0, limit = 10 }, root) => {
+        pageBounds(offset, limit)
+        if (!fs.existsSync(path.join(root, ".sol", "state.json"))) return "Sol no está preparado en este workspace; un encargo acotado puede continuar sin estado persistente. Prepara solo si el trabajo requiere continuidad persistente."
+        const { readStatus } = await core("work-mutations.mjs")
+        return formatStatusPage(readStatus(root), offset, limit)
       })
-      register(editor, "sol_work_get", "Lee un Work y devuelve solo sus metadatos de coordinación.", object({ workId: id }, ["workId"]), async ({ workId }, root) => {
-        const { readWork } = await core("artifacts.mjs"); const w = readWork(root, workId, { files: false })
-        const criteria = w.objective.criteria.slice(0, 12).map((c: any) => `${c.id}: ${c.description.slice(0, 220)} · verificar: ${c.verification.slice(0, 160)}`).join("\n")
-        const tasks = w.tasks.slice(0, 20).map((t: any) => `${t.id} [${t.status}] ${t.title.slice(0, 160)}${t.summary ? ` — ${t.summary.slice(0, 220)}` : ""}`).join("\n")
-        const blockers = w.blockers.slice(0, 8).map((value: string) => value.slice(0, 180)).join("; ") || "ninguno"
-        const omitted = `${w.objective.criteria.length > 12 ? ` · ${w.objective.criteria.length - 12} criterios omitidos` : ""}${w.tasks.length > 20 ? ` · ${w.tasks.length - 20} tareas omitidas` : ""}`
-        return `${w.id} · revisión ${w.revision} · ${w.status}\n${w.title}: ${w.objective.outcome.slice(0, 400)}\nCriterios:\n${criteria || "sin criterios"}\nTareas (${w.tasks.filter((t: any) => t.status === "done").length}/${w.tasks.length}):\n${tasks || "sin tareas"}${omitted}\nBloqueos: ${blockers}\nSiguiente: ${w.nextAction || "sin acción registrada"}\n${await readinessSummary(w)}`
+      register(editor, "sol_work_get", "Consulta metadata de un Work por sección y página; itemId recupera un registro completo, taskId/criterionId seleccionan alcance. No abre archivos referenciados.", object({ workId: id, section: { enum: workSections, default: "summary" }, ...pagination, itemId: string("ID del registro o path del documento para detalle completo", 1000), taskId: id, criterionId: id }, ["workId"]), async ({ workId, ...query }: WorkQuery & { workId: string }, root) => {
+        const { readWork } = await core("artifacts.mjs")
+        const work = readWork(root, workId, { files: false })
+        const { deriveTaskReadiness } = await core("contracts.mjs")
+        const scope = query.taskId ? deriveTaskReadiness(work, query.taskId) : undefined
+        const view = formatWorkView(work, query, scope)
+        return [view, ...(!query.section || query.section === "summary" || query.section === "discovery" || query.taskId ? [await readinessSummary(work, query.taskId)] : [])].join("\n")
       })
       register(editor, "sol_work_create", "Crea un trabajo Sol con objetivo, criterio verificable y prioridad.", object({ workId: id, title: string("Título", 240), objective: string("Resultado esperado"), criterion: string("Criterio de aceptación"), verification: string("Método de verificación"), priority: { enum: workSchema.properties.priority.enum } }, ["workId", "title", "objective", "criterion", "verification"]), async (args, root) => {
         const { createWorkOperation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); return formatReceipt(createWorkOperation(root, args))
       })
       register(editor, "sol_work_apply", "Aplica hasta 20 cambios semánticos tipados en una sola revisión de Work. No acepta JSON completo ni acciones desconocidas.", publicWorkUpdateToolSchema, async (args, root) => {
         // A user-reported approval record is documentary metadata, never native authorization.
-        // Guard here as well as in the exposed schema: tests/adapters may invoke execute directly.
+        // Guard here as well as in the exposed schema: a fixture may invoke execute directly.
         if (Array.isArray(args?.actions) && args.actions.some((action: any) => action?.type === privateApprovalAction)) throw new Error("shipping.approval.record no está disponible mediante sol_work_apply; requiere autorización nativa dedicada.")
         const { applyWorkMutation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); const receipt = applyWorkMutation(root, args); const { readWork } = await core("artifacts.mjs"); const work = readWork(root, args.workId, { files: false }); return `${formatReceipt(receipt)}\n${await readinessSummary(work)}`
       })

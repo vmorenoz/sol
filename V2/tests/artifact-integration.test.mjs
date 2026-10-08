@@ -1,3 +1,4 @@
+import {preparePluginVersionFixture} from './plugin-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,6 +11,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
 function fixture(){
   const home=fs.mkdtempSync(path.join(os.tmpdir(),'sol-config-real-plugin-'));
+  preparePluginVersionFixture(home);
   const project=path.join(home,'repo');fs.mkdirSync(project);
   execFileSync('git',['init','--quiet'],{cwd:project});
   const lib=path.join(home,'.sol/lib'),schemas=path.join(home,'.sol/schemas'),config=path.join(home,'.config/opencode/opencode.jsonc');
@@ -37,7 +39,7 @@ function pluginSource({home,project,config,initial,scenario}){return String.raw`
   const infoPath=execFileSync('git',['rev-parse','--git-path','info/exclude'],{cwd:project,encoding:'utf8'}).trim();
   const exclude=path.resolve(project,infoPath);const initialExclude=fs.existsSync(exclude)?fs.readFileSync(exclude):null;
   const view=await call('sol_config_get',{});const output=String(view.content);
-  if(!output.includes('Tracking local del repo')||!output.includes('revisión'))throw Error('config_get no muestra tracking/revisión local');
+  if(!output.includes('Tracking local del repo')||!output.includes('revisión'))throw Error('config_get no muestra tracking/revisión local: '+output);
   if(output.includes('fixture-secret')||output.includes('apiKey'))throw Error('config_get expuso settings sensibles');
   if(!output.includes('openai/vendor/path-model'))throw Error('catálogo no conserva id de modelo con slash');
   const snap=readModelConfig(),tracking=readArtifactTracking(project);
@@ -80,7 +82,7 @@ test('plugin integra los helpers reales: wizard coordinado, privacidad, rollback
     const f=fixture();
     try{
       const source=pluginSource({...f,scenario});
-      const result=spawnSync(process.execPath,['--experimental-strip-types','--input-type=module','-e',source],{encoding:'utf8',env:{...process.env,HOME:f.home,USERPROFILE:f.home}});
+      const result=spawnSync(process.execPath,['--experimental-strip-types','--input-type=module','-e',source],{encoding:'utf8',env:{...process.env,HOME:f.home,USERPROFILE:f.home,XDG_CONFIG_HOME:path.join(f.home,'.config'),OPENCODE_CONFIG_DIR:path.join(f.home,'.config/opencode')}});
       assert.equal(result.status,0,`${scenario}\n${result.stdout}\n${result.stderr}`);
     }finally{f.dispose();}
   }
@@ -99,5 +101,5 @@ test('sol-init ordena el tracking antes de cualquier preparación y config no al
   assert.match(config,/tracking es estrictamente local a este repo y nunca una preferencia global/i);
   assert.match(config,/si está `unconfigured`[\s\S]*`Local` como valor sugerido\/predeterminado[\s\S]*`Versionado` como alternativa explícita/i);
   assert.ok(config.includes('no significa que `.sol/` ya esté excluido'));
-  assert.match(sol,/Saludos y consultas de estado no ejecutan herramientas de tracking/);
+  assert.match(sol,/encargo ordinario, selección del agente o carga de una skill no lo activa/);
 });

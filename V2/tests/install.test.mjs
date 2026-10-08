@@ -83,10 +83,10 @@ test('No modifica configuración ajena ni pisa una integración no registrada',t
   assert.throws(()=>install(options(home)),/archivo ajeno|Integración anterior/);assert.equal(fs.readFileSync(config,'utf8'),'ORIGINAL');assert.equal(fs.readFileSync(agent,'utf8'),'AJENO');assert.equal(fs.existsSync(path.join(home,'.sol')),false);
 });
 
-test('Instalación predeterminada limpia modelos Sol heredados y conserva intacto lo demás',t=>{
+test('Perfil inherited explícito limpia modelos Sol y conserva intacto lo demás',t=>{
   const home=temp(t),config=path.join(home,'.config/opencode/opencode.jsonc');fs.mkdirSync(path.dirname(config),{recursive:true});
   const original=`{// keep comment\n "model":{"providerID":"acme","model":"main"},"auth":{"token":"secret"},"permissions":{"*":"allow"},"providers":{"acme":{"options":{"apiKey":"private"}}},"mcp":{"keep":{"type":"remote","url":"https://example.test"}},"agents":{"sol":{"model":{"providerID":"old","model":"sol-model"},"permission":{"*":"deny"},"other":true},"unrelated":{"model":"stay/model","permission":{"x":"ask"}}}}`;
-  fs.writeFileSync(config,original);const result=install(options(home));const output=fs.readFileSync(config,'utf8');
+  fs.writeFileSync(config,original);const result=install({...options(home),profile:'inherited'});const output=fs.readFileSync(config,'utf8');
   assert.match(output,/keep comment/);assert.match(output,/secret/);assert.match(output,/private/);assert.match(output,/stay\/model/);assert.match(output,/"other":true/);assert.match(output,/"deny"/);assert.doesNotMatch(output,/old/);
   assert.equal(result.profile,'inherited');assert.ok(result.modelChanges.some(x=>x.agentId==='sol'));
   const manifest=JSON.parse(fs.readFileSync(path.join(home,'.sol/installation.json')));assert.deepEqual(manifest.modelConfig.agentIds,[]);assert.equal(manifest.files['.config/opencode/opencode.jsonc'],undefined);
@@ -98,9 +98,9 @@ test('Migra JSON a JSONC con respaldo y sin perder configuración si no hay mode
   const index=JSON.parse(fs.readFileSync(path.join(result.recovery,'recovery.json')));const backup=index.files.find(x=>x.path==='.config/opencode/opencode.json');assert.equal(fs.readFileSync(path.join(home,backup.backup),'utf8'),original);
 });
 
-test('Bloquea opencode.json y opencode.jsonc simultáneos sin tocar ninguno',t=>{
-  const home=temp(t),dir=path.join(home,'.config/opencode');fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'opencode.json'),'{}');fs.writeFileSync(path.join(dir,'opencode.jsonc'),'{}');
-  assert.throws(()=>install(options(home)),/precedencia es ambigua/);assert.equal(fs.existsSync(path.join(home,'.sol')),false);
+test('Bloquea opencode.json y opencode.jsonc con valores incompatibles sin tocar ninguno',t=>{
+  const home=temp(t),dir=path.join(home,'.config/opencode');fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(path.join(dir,'opencode.json'),' {"theme":"dark"}');fs.writeFileSync(path.join(dir,'opencode.jsonc'),' {"theme":"light"}');
+  assert.throws(()=>install(options(home)),/Conflicto entre opencode.json y opencode.jsonc/);assert.equal(fs.readFileSync(path.join(dir,'opencode.json'),'utf8'),' {"theme":"dark"}');assert.equal(fs.readFileSync(path.join(dir,'opencode.jsonc'),'utf8'),' {"theme":"light"}');assert.equal(fs.existsSync(path.join(home,'.sol')),false);
 });
 
 test('Perfil equilibrado valida catálogo y asigna roles nativos en config global',t=>{
@@ -119,7 +119,7 @@ test('Desinstalación retira preferencias de modelos Sol y conserva permisos y a
 test('Balanced idempotente y luego inherited limpia Solo modelos Sol',t=>{
   const home=temp(t);install({...options(home),profile:'balanced',catalog:modelCatalog});const backupDir=path.join(home,'.sol/backups'),before=fs.existsSync(backupDir)?fs.readdirSync(backupDir):[];
   const same=install({...options(home),profile:'balanced',catalog:modelCatalog});assert.equal(same.modelChanges.length,0);assert.deepEqual(fs.existsSync(backupDir)?fs.readdirSync(backupDir):[],before);
-  const config=path.join(home,'.config/opencode/opencode.jsonc'),result=install(options(home)),value=JSON.parse(fs.readFileSync(config,'utf8'));
+  const config=path.join(home,'.config/opencode/opencode.jsonc'),result=install({...options(home),profile:'inherited'}),value=JSON.parse(fs.readFileSync(config,'utf8'));
   assert.equal(result.profile,'inherited');assert.ok(result.modelChanges.length);assert.equal(value.agents.sol.model,undefined);assert.equal(value.agents['sol-explorer'].model,undefined);
   assert.equal(fs.existsSync(path.join(home,'.config/opencode/agents/sol.md')),true);
 });
@@ -134,7 +134,7 @@ test('Limpia modelo de agente Sol futuro solo si estaba registrado y no toca sus
   const home=temp(t),oc=path.join(home,'.config/opencode'),config=path.join(oc,'opencode.jsonc');fs.mkdirSync(oc,{recursive:true});
   fs.writeFileSync(config,JSON.stringify({agents:{'sol-future':{model:{providerID:'old',model:'future'},permission:{'*':'deny'}},other:{model:{providerID:'x',model:'keep'}}}}));
   fs.mkdirSync(path.join(home,'.sol'),{recursive:true});fs.writeFileSync(path.join(home,'.sol/installation.json'),JSON.stringify({schemaVersion:1,version:'2.0.0',scope:'global',runtimes:['opencode-v2'],opencodeDir:'.config/opencode',files:{},borrowed:[],modelConfig:{path:'.config/opencode/opencode.jsonc',agentIds:['sol-future']}}));
-  install(options(home));const result=JSON.parse(fs.readFileSync(config,'utf8'));
+  install({...options(home),profile:'inherited'});const result=JSON.parse(fs.readFileSync(config,'utf8'));
   assert.equal(result.agents['sol-future'].model,undefined);assert.deepEqual(result.agents['sol-future'].permission,{'*':'deny'});assert.deepEqual(result.agents.other.model,{providerID:'x',model:'keep'});
 });
 

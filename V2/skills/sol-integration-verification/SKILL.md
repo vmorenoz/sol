@@ -14,3 +14,5 @@ Usa esta skill cuando el cambio cruce interfaces, capas, servicios o módulos. N
 6. Repite la comprobación relevante sobre el conjunto integrado y su fingerprint, no heredes PASS de partes. Registra lo no ejecutado/bloqueado y riesgos residuales.
 
 Salida: forma parte de la evidencia de QA o review del Code Reviewer según el encargo; no genera una tercera revisión obligatoria. No edites el índice del proyecto, no delegues y no certifiques cumplimiento institucional. Esta skill pertenece a Sol y complementa las instrucciones de verificación pertinentes al proyecto.
+
+Para herramientas de documentación/QA, consulta solo si hace falta `../sol-discovery/references/capability-selection.md`: Context7, navegador nativo/Playwright CLI y GitHub MCP/gh son opcionales, requieren disponibilidad y permiso reales; esta skill no los instala. Una sesión hija no implica acceso automático a MCP del principal.

@@ -7,7 +7,9 @@ Este repositorio reúne las dos generaciones del asistente personal Sol:
 
 ## V2
 
-Sol V2 es un asistente personal de desarrollo para OpenCode v2. Coordina especialistas nativos, conserva contexto y trabajos en `.sol/` dentro del workspace y usa tools semánticas para las operaciones de coordinación. No es un asistente de banca ni incluye las skills de BBVA/APX/CELLS.
+Sol V2 es un asistente de desarrollo para OpenCode v2. Coordina especialistas nativos, conserva contexto y trabajos en `.sol/` dentro del workspace y usa tools semánticas para las operaciones de coordinación. No es un asistente de banca ni incluye las skills de BBVA/APX/CELLS.
+
+La revisión 2.1 mejora discovery conversacional, delegación nativa, comunicación Markdown y continuidad por frentes. No incorpora asistencia personal fuera del desarrollo.
 
 Requisitos: Node.js 22+ y OpenCode v2. Para validar:
 

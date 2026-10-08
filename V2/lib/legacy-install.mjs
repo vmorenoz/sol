@@ -62,8 +62,10 @@ function manifestPlan(root,oc,manifest){
   for(const f of manifest.files){const rel=relativeFor(root,f.path);register(root,result,rel);}
   const manifestRel=`${oc}/sol-install.json`;register(root,result,manifestRel);
   const config=configRel(root,oc,manifest.configPath,r=>r===`${oc}/opencode.json`||r===`${oc}/opencode.jsonc`);
-  const bytes=existingFile(root,config);
-  if(bytes){const output=cleanConfig(bytes.toString('utf8'),{spec:manifest.pluginSpec,packageRoot,previousDefaultAgent:manifest.previousDefaultAgent,installedMcp:manifest.mcp?.installed,previousMcp:manifest.mcp?.previous});if(output!==null)result.edits.set(config,output);}
+  for(const configPath of new Set([config,`${oc}/opencode.json`,`${oc}/opencode.jsonc`])){
+    const bytes=existingFile(root,configPath);
+    if(bytes){const output=cleanConfig(bytes.toString('utf8'),{spec:manifest.pluginSpec,packageRoot,previousDefaultAgent:manifest.previousDefaultAgent,installedMcp:manifest.mcp?.installed,previousMcp:manifest.mcp?.previous});if(output!==null)result.edits.set(configPath,output);}
+  }
   if(manifest.tui){
     const tui=manifest.tui;
     if(!isObject(tui)||typeof tui.configPath!=='string'||typeof tui.previousText!=='string'||typeof tui.installedPluginSpec!=='string'||typeof tui.installedHash!=='string'||!/^[a-f0-9]{64}$/.test(tui.installedHash)||typeof tui.fileExisted!=='boolean'||typeof tui.pluginArrayExisted!=='boolean'||typeof tui.owned!=='boolean'||(tui.previousPluginSpec!==undefined&&typeof tui.previousPluginSpec!=='string'))throw new Error('Metadata TUI legacy inválida');
@@ -93,6 +95,9 @@ export function discoverLegacy(root,opencodeDir){
   root=path.resolve(root);safePath(root,opencodeDir);
   const manifest=`${opencodeDir}/sol-install.json`,manifestPath=safePath(root,manifest);
   const manifestBytes=existingFile(root,manifest);
-  if(manifestBytes)return manifestPlan(root,opencodeDir,JSON.parse(manifestBytes.toString('utf8')));
+  if(manifestBytes){
+    let manifest;try{manifest=JSON.parse(manifestBytes.toString('utf8'));}catch{throw new Error('Manifest legacy Sol no reconocido; corrige su JSON antes de continuar.');}
+    return manifestPlan(root,opencodeDir,manifest);
+  }
   return fallback(root,opencodeDir);
 }

@@ -9,6 +9,7 @@ Recurso de apoyo disponible al modelo (sin entrada slash). OpenCode lista metada
 
 | Necesidad | Referencia |
 |---|---|
+| Elegir herramientas de documentación, lectura remota o QA ya disponibles | `references/capability-selection.md` |
 | Elegir lentes para el encargo | `references/interview-lenses.md` |
 | Evaluar adaptación/confirmación redundante | `references/evaluation-cases.json` + refs `adaptive-dialogue.md`, `rich-questions.md`, `sufficiency.md` |
 | Triage de fuentes, confianza y ausencia | `references/evidence-triage.md` |
@@ -45,3 +46,5 @@ Usa `references/sufficiency.md` para explicar suficiencia. Research, exploració
 Entrega los hallazgos al mismo hilo antes de congelar decisiones y plan. Mantén decisiones, evidencia y plan en las plantillas/Work existentes cuando aporten valor; no copies estado canónico en listas paralelas. Recomendaciones no son decisiones del usuario y documentos estáticos no son ejecución live.
 
 Para contexto persistente solicitado, consulta `references/context-map.md`: ledger tipado vía `sol_work_apply`, vista narrativa `project@1.0` enlazada por IDs y verificación de frescura. No inicies tracking/mapeo completo por el mero hecho de recibir un encargo.
+
+Los encargos y hallazgos circulan en Markdown natural con contexto puntual y referencias; no se exige JSON ni un reporte duplicado. El contrato tipado se aplica cuando Sol registra hechos verificados en las tools.

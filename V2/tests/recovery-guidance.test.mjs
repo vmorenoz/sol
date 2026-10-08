@@ -16,7 +16,7 @@ test('recuperación conserva Work/Explorer existente y reconstruye Discovery ant
     assert.ok(resume.toLowerCase().includes(concept.toLowerCase()),`falta reconstrucción de ${concept}`);
   assert.match(resume,/no vuelvas a preguntar algo respondido salvo evidencia o contexto nuevo material/);
   assert.match(resume,/explica qué comportamiento\/riesgo cambia/);
-  assert.match(sol,/Explicitly resume\/continue an existing Work.*`sol-resume`/);
+  assert.match(sol,/Retoma con sol-resume cuando se pida continuar/);
 });
 
 test('readiness, frescura y map status se informan conservadoramente con APIs/estados vigentes',()=>{

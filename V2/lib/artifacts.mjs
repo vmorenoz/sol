@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import {assertSchema} from './schema.mjs';
 import {bindEvidence,deriveWorkReadiness,evidenceBindingsCurrent,workContractDigest} from './contracts.mjs';
-export {bindEvidence,compareShippingSnapshot,criterionContract,deriveWorkReadiness,taskContract,workContractDigest} from './contracts.mjs';
+export {bindEvidence,compareShippingSnapshot,criterionContract,deriveTaskReadiness,deriveWorkReadiness,taskContract,workContractDigest} from './contracts.mjs';
 import {safePath,exists,readJSON,readText,writeJSON,atomicWrite,assertID,now,fingerprint} from './fs.mjs';
 const terminal = status => ['done','cancelled'].includes(status);
 const wp = id => `.sol/work/${assertID(id)}/work.json`;
@@ -44,9 +44,39 @@ export function validateWork(root,w,{files=true,fresh=false}={}) {
     unique(discovery.sources.map(x=>x.id),'Fuentes');unique(discovery.claims.map(x=>x.id),'Afirmaciones');unique(discovery.assumptions.map(x=>x.id),'Supuestos');unique(discovery.questions.map(x=>x.id),'Preguntas');unique(discovery.decisions.map(x=>x.id),'Decisiones');
     for(const record of [...discovery.claims,...discovery.assumptions,...discovery.questions,...discovery.decisions])for(const id of record.sourceIds||[])if(!sources.has(id))throw new Error(`Discovery referencia fuente inexistente: ${id}`);
     for(const a of discovery.assumptions){if(a.status==='validated'&&!(a.sourceIds||[]).length)throw new Error(`Supuesto validado requiere fuentes: ${a.id}`);if(a.status==='rejected'&&(!a.resolution?.trim()||!(a.sourceIds||[]).length))throw new Error(`Supuesto rechazado requiere resolución y fuentes: ${a.id}`);}
-    for(const q of discovery.questions){if(q.answer?.decisionId&&!decisions.has(q.answer.decisionId))throw new Error(`Pregunta referencia decisión inexistente: ${q.answer.decisionId}`);if(q.answer&&!q.answer.reportedAt)throw new Error(`Respuesta sin fecha: ${q.id}`);}
-    for(const d of discovery.decisions){for(const id of d.questionIds||[])if(!questions.has(id))throw new Error(`Decisión referencia pregunta inexistente: ${id}`);if(d.supersedes&&!decisions.has(d.supersedes))throw new Error(`Decisión sustituye referencia inexistente: ${d.supersedes}`);if(d.status==='confirmed'&&(!d.confirmedAt||!['user_reported','project_owner_reported','existing_source'].includes(d.confirmedBy)))throw new Error(`Decisión confirmada sin procedencia: ${d.id}`);if(d.status==='superseded'&&(!d.supersededBy||!d.supersessionReason?.trim()))throw new Error(`Decisión sustituida requiere reemplazo y motivo: ${d.id}`);if(d.supersededBy){const replacement=decisions.get(d.supersededBy);if(!replacement||replacement.supersedes!==d.id||replacement.status==='superseded'||!replacement.supersessionReason?.trim())throw new Error(`Cadena de sustitución inconsistente: ${d.id}`);}}
-    for(const d of decisions.values()){const seen=new Set([d.id]);let next=d;while(next.supersedes){if(seen.has(next.supersedes))throw new Error('Ciclo de sustitución de decisiones');seen.add(next.supersedes);next=decisions.get(next.supersedes);if(!next)break;}}
+    const taskIds=new Set(w.tasks.map(t=>t.id)),criterionIds=new Set(w.objective.criteria.map(c=>c.id));
+    for(const record of [...discovery.assumptions,...discovery.questions,...discovery.decisions]){
+      for(const [field,known,label] of [['taskIds',taskIds,'tarea'],['criterionIds',criterionIds,'criterio']]){
+        unique(record[field]||[],`Discovery ${record.id} ${field}`);
+        for(const id of record[field]||[])if(!known.has(id))throw new Error(`Discovery referencia ${label} inexistente: ${id}`);
+      }
+    }
+    for(const q of discovery.questions){
+      if(q.answer?.decisionId&&!decisions.has(q.answer.decisionId))throw new Error(`Pregunta referencia decisión inexistente: ${q.answer.decisionId}`);
+      if(q.answer&&!q.answer.reportedAt)throw new Error(`Respuesta sin fecha: ${q.id}`);
+      for(const id of q.answer?.sourceIds||[])if(!sources.has(id))throw new Error(`Respuesta de ${q.id} referencia fuente inexistente: ${id}`);
+    }
+    for(const d of discovery.decisions){
+      for(const id of d.questionIds||[])if(!questions.has(id))throw new Error(`Decisión referencia pregunta inexistente: ${id}`);
+      if(d.status==='confirmed'&&(!d.confirmedAt||!['user_reported','project_owner_reported','existing_source'].includes(d.confirmedBy)))throw new Error(`Decisión confirmada sin procedencia: ${d.id}`);
+      if(d.status==='superseded'&&(!d.supersededBy||!d.supersessionReason?.trim()))throw new Error(`Decisión sustituida requiere reemplazo y motivo: ${d.id}`);
+      if(d.supersedes){
+        const prior=decisions.get(d.supersedes);
+        if(!prior||prior.status!=='superseded'||prior.supersededBy!==d.id||!d.supersessionReason?.trim())throw new Error(`Cadena de sustitución inconsistente: ${d.id}`);
+      }
+      if(d.supersededBy){
+        const replacement=decisions.get(d.supersededBy);
+        if(d.status!=='superseded'||!replacement||replacement.supersedes!==d.id||!replacement.supersessionReason?.trim())throw new Error(`Cadena de sustitución inconsistente: ${d.id}`);
+      }
+    }
+    for(const d of decisions.values()){
+      const seen=new Set([d.id]);let next=d;
+      while(next.supersededBy){
+        if(seen.has(next.supersededBy))throw new Error('Ciclo de sustitución de decisiones');
+        seen.add(next.supersededBy);next=decisions.get(next.supersededBy);
+      }
+      if(seen.size>1&&next.status!=='confirmed')throw new Error(`Cadena de sustitución sin decisión final confirmada: ${d.id}`);
+    }
   }
   if (Date.parse(w.updatedAt)<Date.parse(w.createdAt))throw new Error('updatedAt anterior a createdAt');
   if (terminal(w.status)!==Boolean(w.closure))throw new Error('Cierre y estado terminal incoherentes');
@@ -166,11 +196,12 @@ function validateContextMap(root,w,document='.sol/project.md'){
 }
 
 export function inspectContextMap(root,w){
-  const mapped=w.tasks?.some(t=>t.kind==='exploration'&&t.id==='T-1')||w.evidence?.some(e=>/sol-explorer/i.test(e.basis||''));
+  const mapTaskIds=new Set((w.tasks||[]).filter(t=>t.kind==='exploration').map(t=>t.id));
+  const mapped=w.evidence?.some(e=>e.report==='.sol/project.md'&&e.taskIds?.some(id=>mapTaskIds.has(id)))||w.tasks?.some(t=>t.kind==='exploration'&&t.id==='T-1')||w.evidence?.some(e=>/sol-explorer/i.test(e.basis||''));
   if(!mapped)return {status:'not_mapped',reasons:[]};
   if(!w.discovery?.claims?.length||!w.discovery?.sources?.some(s=>s.path||s.kind==='user_statement'))return {status:'legacy_unverified',reasons:['El mapeo existente no conserva procedencia Discovery estructurada verificable.']};
   const closureEvidence=new Set(w.closure?.evidenceIds||[]);
-  const mapEvidence=w.evidence?.find(e=>closureEvidence.has(e.id))||w.evidence?.find(e=>e.taskIds?.includes('T-1')&&e.report==='.sol/project.md');
+  const mapEvidence=w.evidence?.find(e=>e.report==='.sol/project.md'&&e.taskIds?.some(id=>mapTaskIds.has(id)))||w.evidence?.find(e=>closureEvidence.has(e.id));
   if(!mapEvidence?.files?.some(file=>file.path==='.sol/project.md'))return {status:'legacy_unverified',reasons:['El mapeo no conserva fingerprint del documento en su evidencia; su vigencia no puede comprobarse.']};
   for(const file of mapEvidence.files){
     let current;try{current=fingerprint(root,file.path);}catch{return {status:'stale',reasons:[`No se puede comprobar el archivo archivado del mapeo: ${file.path}`]};}
@@ -185,16 +216,19 @@ export function completeProjectMap(root,{workId,expectedRevision,summary:result,
   const id=workId,w=readWork(root,id,{files:false});
   if(!Number.isSafeInteger(expectedRevision)||w.revision!==expectedRevision)throw new Error(`Revisión obsoleta; actual=${w.revision}. Releer y reconciliar, no sobrescribir.`);
   if(terminal(w.status))throw new Error('El trabajo de mapeo ya está cerrado');
-  if(w.tasks.length||w.evidence.length||w.documents.length||w.objective.criteria.length!==1)
-    throw new Error('complete-map solo admite un trabajo nuevo de contexto sin consolidación previa');
+  if(w.evidence.length||w.objective.criteria.length!==1||w.documents.some(d=>d.path!=='.sol/project.md'))
+    throw new Error('complete-map solo admite un trabajo de contexto sin consolidación previa');
+  const task=w.tasks[0],criterion=w.objective.criteria[0];
+  if(w.tasks.length!==1||task?.kind!=='exploration'||task.status!=='in_progress'||task.dependsOn.length||task.criterionIds.length!==1||task.criterionIds[0]!==criterion.id||!task.writeScope.some(p=>p==='.sol/project.md'||'.sol/project.md'.startsWith(p+'/')))
+    throw new Error('complete-map requiere una tarea exploration en curso creada antes del mapeo, vinculada al criterio y con alcance de escritura sobre .sol/project.md');
   const document='.sol/project.md';
   if(!exists(root,document))throw new Error(`Documento no existe: ${document}`);
   if(!readText(root,document).includes('<!-- template: project@1.0 -->'))throw new Error('project.md no declara template project@1.0');
   const map=validateContextMap(root,w,document);
-  const criterion=w.objective.criteria[0],taskId='T-1',evidenceId='E-1',checkedAt=now();
+  const taskId=task.id,evidenceId='E-1',checkedAt=now();
   w.status='in_progress';w.summary=result;w.nextAction='Cerrar el mapeo con su evidencia estática';
-  w.documents=[{kind:'project',path:document,templateVersion:'project@1.0'}];
-  w.tasks=[{id:taskId,title:'Inspeccionar y redactar contexto inicial',kind:'exploration',contractRevision:1,criterionIds:[criterion.id],agent:'sol-explorer',status:'done',dependsOn:[],writeScope:[document],resources:['templates/project.md'],acceptance:[criterion.description],evidenceIds:[evidenceId],summary:result}];
+  if(!w.documents.some(d=>d.path===document))w.documents.push({kind:'project',path:document,templateVersion:'project@1.0'});
+  task.status='done';task.evidenceIds=[evidenceId];task.summary=result;
   const evidence={id:evidenceId,kind:'static',status:'pass',checkedAt,criterionIds:[criterion.id],taskIds:[taskId],report:document,command:null,cwd:'.',exitCode:null,basis:'Core comprobó enlaces Discovery/documento y fingerprints locales actuales; la etiqueta read/contrasted es caller_reported. No acredita verdad semántica, ejecución ni autenticidad de revisión humana o de agente.',files:map.files,summary:result};
   evidence.contractBindings=bindEvidence(w,evidence);w.evidence=[evidence];
   criterion.evidenceIds=[evidenceId];

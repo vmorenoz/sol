@@ -27,10 +27,11 @@ export function evidenceBindingsCurrent(work,evidence){
 }
 export function workContractDigest(work){
   const discovery=work.discovery||{};
+  const scope=record=>Object.fromEntries(['taskIds','criterionIds'].filter(key=>record[key]?.length).map(key=>[key,[...record[key]].sort()]));
   const decisions=[
-    ...(discovery.decisions||[]).filter(d=>d.status==='confirmed').map(d=>({id:d.id,questionIds:[...(d.questionIds||[])].sort(),statement:d.statement,rationale:d.rationale,status:d.status,confirmedBy:d.confirmedBy,supersedes:d.supersedes})),
-    ...(discovery.questions||[]).filter(q=>(q.resolutionKind||'human_decision')==='human_decision'&&q.answer?.kind==='user_reported').map(q=>({id:`${q.id}:answer`,questionIds:[q.id],statement:q.answer.text,status:'confirmed',confirmedBy:'user_reported'})),
-    ...(discovery.assumptions||[]).filter(a=>a.impact==='material'&&['validated','rejected'].includes(a.status)).map(a=>({id:`${a.id}:assumption`,statement:a.statement,status:a.status,resolution:a.resolution||''}))
+    ...(discovery.decisions||[]).filter(d=>d.status==='confirmed').map(d=>({id:d.id,...scope(d),questionIds:[...(d.questionIds||[])].sort(),statement:d.statement,rationale:d.rationale,status:d.status,confirmedBy:d.confirmedBy,supersedes:d.supersedes})),
+    ...(discovery.questions||[]).filter(q=>(q.resolutionKind||'human_decision')==='human_decision'&&q.answer?.kind==='user_reported').map(q=>({id:`${q.id}:answer`,...scope(q),questionIds:[q.id],statement:q.answer.text,status:'confirmed',confirmedBy:'user_reported'})),
+    ...(discovery.assumptions||[]).filter(a=>a.impact==='material'&&['validated','rejected'].includes(a.status)).map(a=>({id:`${a.id}:assumption`,...scope(a),statement:a.statement,status:a.status,resolution:a.resolution||''}))
   ].sort((a,b)=>a.id.localeCompare(b.id));
   return sha256(JSON.stringify({goal:work.objective.outcome,criteria:work.objective.criteria.map(c=>({id:c.id,...criterionContract(c)})).sort((a,b)=>a.id.localeCompare(b.id)),tasks:work.tasks.map(t=>({id:t.id,...taskContract(t)})).sort((a,b)=>a.id.localeCompare(b.id)),decisions}));
 }
@@ -56,21 +57,49 @@ export function compareShippingSnapshot(intent,currentSnapshot,{receipts=[]}={})
   if(JSON.stringify([...(currentSnapshot.includedCommitShas||[])].sort())!==JSON.stringify(expectedCommits))reasons.push('includedCommitShas cambió fuera del commit aprobado');
   return {matches:reasons.length===0,reasons,expected:{headSha:expectedHead,snapshotSha256:expectedSnapshot,contentSha256:intent.contentSha256}};
 }
-export function deriveWorkReadiness(work){
-  const implementationReasons=[],completionReasons=[],discovery=work.discovery;
+// An absent or empty scope is deliberately global for legacy records.
+function uncertaintyApplies(record,taskIds,criterionIds){
+  if(!taskIds)return true;
+  const tasks=record.taskIds||[],criteria=record.criterionIds||[];
+  return (!tasks.length&&!criteria.length)||tasks.some(id=>taskIds.has(id))||criteria.some(id=>criterionIds.has(id));
+}
+function discoveryReasons(work,{taskIds,criterionIds}={}){
+  const reasons=[],discovery=work.discovery;
   if(discovery){
     const decisionById=new Map((discovery.decisions||[]).map(d=>[d.id,d]));
-    for(const q of discovery.questions||[])if(q.impact==='material'){
+    const sources=new Set((discovery.sources||[]).map(s=>s.id));
+    const cited=ids=>Array.isArray(ids)&&ids.length>0&&ids.every(id=>sources.has(id));
+    const applicable=record=>uncertaintyApplies(record,taskIds,criterionIds);
+    const confirmedDecision=decision=>{
+      const seen=new Set();
+      while(decision?.status==='superseded'){
+        if(seen.has(decision.id))return undefined;
+        seen.add(decision.id);
+        const next=decisionById.get(decision.supersededBy);
+        if(!next||next.supersedes!==decision.id)return undefined;
+        decision=next;
+      }
+      return decision?.status==='confirmed'?decision:undefined;
+    };
+    for(const q of discovery.questions||[])if(q.impact==='material'&&applicable(q)){
       const resolutionKind=q.resolutionKind||'human_decision',answer=q.answer;
-      let linkedDecision=decisionById.get(answer?.decisionId);while(linkedDecision?.status==='superseded')linkedDecision=decisionById.get(linkedDecision.supersededBy);
+      let linkedDecision=confirmedDecision(decisionById.get(answer?.decisionId));
       if(!linkedDecision)linkedDecision=(discovery.decisions||[]).find(d=>d.status==='confirmed'&&(d.questionIds||[]).includes(q.id));
-      const resolved=resolutionKind==='investigation'?Boolean(answer&&answer.kind==='investigated'&&answer.sourceIds?.length):Boolean(answer?.kind==='user_reported'||answer?.kind==='investigated'&&linkedDecision?.status==='confirmed'&&(linkedDecision.questionIds||[]).includes(q.id)&&['user_reported','project_owner_reported'].includes(linkedDecision?.confirmedBy));
-      if(!resolved)implementationReasons.push(`Pregunta material sin resolver: ${q.id}`);
+      const answerSourcesValid=answer&&(answer.sourceIds||[]).every(id=>sources.has(id));
+      const resolved=resolutionKind==='investigation'
+        ?Boolean(answer?.kind==='investigated'&&cited(answer.sourceIds))
+        :Boolean(answerSourcesValid&&(answer.kind==='user_reported'||answer.kind==='investigated'&&linkedDecision?.status==='confirmed'&&(linkedDecision.questionIds||[]).includes(q.id)&&['user_reported','project_owner_reported'].includes(linkedDecision.confirmedBy)));
+      if(!resolved)reasons.push(`Pregunta material sin resolver: ${q.id}`);
     }
-    for(const a of discovery.assumptions||[])if(a.impact==='material'&&a.status!=='validated'&&!(a.status==='rejected'&&a.resolution?.trim()&&a.sourceIds?.length))implementationReasons.push(`Supuesto material sin validación o resolución explícita: ${a.id}`);
-    for(const d of discovery.decisions||[])if(d.status==='proposed')implementationReasons.push(`Decisión propuesta pendiente: ${d.id}`);
+    for(const a of discovery.assumptions||[])if(a.impact==='material'&&applicable(a)&&!(a.status==='validated'&&cited(a.sourceIds))&&!(a.status==='rejected'&&a.resolution?.trim()&&cited(a.sourceIds)))reasons.push(`Supuesto material sin validación o resolución explícita: ${a.id}`);
+    for(const d of discovery.decisions||[])if(d.status==='proposed'&&applicable(d))reasons.push(`Decisión propuesta pendiente: ${d.id}`);
   }
-  for(const decision of work.decisionsPending||[])implementationReasons.push(`Decisión pendiente: ${decision}`);
+  // Free-text legacy decisions have no safe task-level scope.
+  for(const decision of work.decisionsPending||[])reasons.push(`Decisión pendiente: ${decision}`);
+  return reasons;
+}
+export function deriveWorkReadiness(work){
+  const implementationReasons=discoveryReasons(work),completionReasons=[];
   const implementationTasks=work.tasks.filter(t=>(t.kind||'implementation')==='implementation');
   const implementationReady=implementationReasons.length===0;
   // Unknown discovery is compatible with closing a genuinely classified research/planning-only Work,
@@ -79,4 +108,28 @@ export function deriveWorkReadiness(work){
   const researchOnly=work.tasks.length>0&&work.tasks.every(t=>researchKinds.has(t.kind));
   if(!researchOnly)completionReasons.push(...implementationReasons);
   return {ready:implementationReady,implementationReady,completionReady:completionReasons.length===0,reasons:implementationReasons,implementationReasons,completionReasons,suggestedSkills:implementationReasons.length?['sol-discovery','sol-discuss']:implementationTasks.length?['sol-plan','sol-execute']:['sol-discovery','sol-plan']};
+}
+export function deriveTaskReadiness(work,taskId){
+  const tasks=new Map(work.tasks.map(task=>[task.id,task])),task=tasks.get(taskId);
+  if(!task)throw new Error(`Tarea inexistente: ${taskId}`);
+  const relevantTaskIds=new Set(),criterionIds=new Set(),visiting=new Set();
+  function visit(id){
+    if(visiting.has(id))throw new Error(`Ciclo de dependencias: ${id}`);
+    if(relevantTaskIds.has(id))return;
+    const current=tasks.get(id);if(!current)throw new Error(`Dependencia inexistente: ${id}`);
+    visiting.add(id);
+    for(const dependency of current.dependsOn||[])visit(dependency);
+    visiting.delete(id);relevantTaskIds.add(id);
+    for(const criterionId of current.criterionIds||[])criterionIds.add(criterionId);
+  }
+  visit(taskId);
+  const criteria=new Set(work.objective.criteria.map(c=>c.id));
+  for(const record of [...(work.discovery?.questions||[]),...(work.discovery?.assumptions||[]),...(work.discovery?.decisions||[])]){
+    for(const id of record.taskIds||[])if(!tasks.has(id))throw new Error(`Discovery referencia tarea inexistente: ${id}`);
+    for(const id of record.criterionIds||[])if(!criteria.has(id))throw new Error(`Discovery referencia criterio inexistente: ${id}`);
+  }
+  const dependencyReasons=[...relevantTaskIds].filter(id=>id!==taskId&&tasks.get(id).status!=='done').map(id=>`Dependencia sin completar: ${id}`);
+  const implementationReasons=[...discoveryReasons(work,{taskIds:relevantTaskIds,criterionIds}),...dependencyReasons];
+  const reasons=(task.kind||'implementation')==='implementation'?implementationReasons:dependencyReasons;
+  return {taskId,ready:reasons.length===0,implementationReady:implementationReasons.length===0,completionReady:reasons.length===0,reasons,implementationReasons,completionReasons:reasons,relevantTaskIds:[...relevantTaskIds].sort(),criterionIds:[...criterionIds].sort(),suggestedSkills:reasons.length?['sol-discovery','sol-plan']:['sol-execute']};
 }

@@ -8,11 +8,13 @@ import {history,inspectContextMap,status} from '../lib/artifacts.mjs';
 import {assertSchema} from '../lib/schema.mjs';
 
 const at=()=>new Date().toISOString();
+const mappingTask=()=>({type:'task.add',task:{id:'MAP-TASK',title:'Inspeccionar las fuentes y redactar el mapa',kind:'exploration',criterionIds:['AC-1'],agent:'sol-explorer',status:'in_progress',dependsOn:[],writeScope:['.sol/project.md'],resources:['templates/project.md'],acceptance:['Afirmaciones trazables a fuentes leídas'],evidenceIds:[],summary:''}});
 function mapDoc(claimId,statement,sourceIds){return `# Contexto del proyecto\n<!-- template: project@1.0 -->\n\n<!-- claim:${claimId} -->\n${statement}\n\n${sourceIds.map(id=>`<!-- source:${id} -->\nFuente ${id}.`).join('\n')}\n`;}
 function addLocalFinding(root,id='MAP-1',{inspection='read',lane='existing-project'}={}){
   create(root,id);atomicWrite(root,'src/entry.mjs','export const entry = true;\n');
   const statement='El repositorio contiene un módulo de entrada en src/entry.mjs.';
   const receipt=applyWorkMutation(root,{workId:id,expectedRevision:1,actions:[
+    mappingTask(),
     {type:'discovery.context.set',contextLane:lane},
     {type:'discovery.source.add',source:{id:'S-1',kind:'repository',ref:'src/entry.mjs',path:'src/entry.mjs',inspection,observedAt:at()}},
     {type:'discovery.claim.add',claim:{id:'C-1',kind:'fact',statement,sourceIds:['S-1']}}
@@ -25,8 +27,10 @@ test('Un marker template vacío no completa el mapeo ni fabrica PASS o revisión
   const root=repo(t);create(root,'MAP-EMPTY');
   atomicWrite(root,'.sol/project.md','# Proyecto\n<!-- template: project@1.0 -->\nContexto todavía no levantado.\n');
   applyWorkMutation(root,{workId:'MAP-EMPTY',expectedRevision:1,actions:[{type:'discovery.context.set',contextLane:'existing-project'}]});
-  assert.throws(()=>completeMapOperation(root,{workId:'MAP-EMPTY',expectedRevision:2,summary:'Intento de cierre'}),/al menos una afirmación Discovery/);
-  const work=readWork(root,'MAP-EMPTY');assert.equal(work.revision,2);assert.equal(work.status,'pending');assert.deepEqual(work.tasks,[]);assert.deepEqual(work.evidence,[]);
+  assert.throws(()=>completeMapOperation(root,{workId:'MAP-EMPTY',expectedRevision:2,summary:'Intento de cierre'}),/tarea exploration en curso creada antes/);
+  applyWorkMutation(root,{workId:'MAP-EMPTY',expectedRevision:2,actions:[mappingTask()]});
+  assert.throws(()=>completeMapOperation(root,{workId:'MAP-EMPTY',expectedRevision:3,summary:'Intento de cierre'}),/al menos una afirmación Discovery/);
+  const work=readWork(root,'MAP-EMPTY');assert.equal(work.revision,3);assert.equal(work.status,'pending');assert.equal(work.tasks[0].status,'in_progress');assert.deepEqual(work.evidence,[]);
 });
 
 test('Map completa una afirmación enlazada a una fuente local leída con hash calculado por el core',t=>{
@@ -35,7 +39,7 @@ test('Map completa una afirmación enlazada a una fuente local leída con hash c
   const result=completeMapOperation(root,{workId:'MAP-LOCAL',expectedRevision:fixture.revision,summary:'Cartographie des observations disponibles; les zones non examinées restent inconnues.'});
   const work=readWork(root,'MAP-LOCAL');
   const originalDocument=fs.readFileSync(path.join(root,'.sol/project.md'),'utf8');
-  assert.equal(result.status,'done');assert.equal(work.tasks[0].kind,'exploration');assert.equal(work.evidence[0].kind,'static');
+  assert.equal(result.status,'done');assert.equal(work.tasks[0].kind,'exploration');assert.equal(work.tasks[0].id,'MAP-TASK');assert.equal(work.tasks[0].title,before.tasks[0].title);assert.deepEqual(work.tasks[0].acceptance,before.tasks[0].acceptance);assert.equal(work.evidence[0].kind,'static');
   assert.deepEqual(work.evidence[0].files.map(f=>f.path).sort(),['.sol/project.md','src/entry.mjs']);
   assert.match(work.evidence[0].basis,/No acredita verdad semántica/);assert.deepEqual(inspectContextMap(root,work).status,'current');
   const legacy=structuredClone(work);legacy.evidence[0].files=legacy.evidence[0].files.filter(file=>file.path!=='.sol/project.md');
@@ -60,6 +64,7 @@ test('Greenfield puede cerrar con intención reportada y unknowns sin inventar a
   const root=repo(t);create(root,'MAP-GREEN');
   const statement='La persona usuaria reporta que quiere una herramienta nueva para organizar recetas familiares.';
   const result=applyWorkMutation(root,{workId:'MAP-GREEN',expectedRevision:1,actions:[
+    mappingTask(),
     {type:'discovery.context.set',contextLane:'greenfield'},
     {type:'discovery.source.add',source:{id:'S-USER',kind:'user_statement',ref:'Objetivo expresado en esta conversación',observedAt:at()}},
     {type:'discovery.claim.add',claim:{id:'C-INTENT',kind:'fact',statement,sourceIds:['S-USER']}}
@@ -82,6 +87,7 @@ test('Fuentes/afirmaciones legacy sin metadata nueva siguen siendo legibles pero
   const root=repo(t);create(root,'MAP-LEGACY');
   const statement='Se conserva una observación de una versión previa.';
   const r=applyWorkMutation(root,{workId:'MAP-LEGACY',expectedRevision:1,actions:[
+    mappingTask(),
     {type:'discovery.context.set',contextLane:'existing-project'},
     {type:'discovery.source.add',source:{id:'S-OLD',kind:'repository',ref:'src/old.mjs',observedAt:at()}},
     {type:'discovery.claim.add',claim:{id:'C-OLD',kind:'hypothesis',statement,sourceIds:['S-OLD']}}

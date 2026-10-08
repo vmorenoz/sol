@@ -1,6 +1,6 @@
 # Contexto del proyecto
 <!-- template: project@1.0 -->
-Última revisión: {{fecha observada}} · responsable: {{Sol/Explorador}} · base: {{commit/archivos realmente revisados; si desconocida, indicar desconocida}}
+Última revisión: {{fecha observada}} · autor: {{Explorador}} · integración: {{Sol}} · base: {{commit/archivos realmente revisados; si desconocida, indicar desconocida}}
 
 Este documento es una vista narrativa; las afirmaciones con anclas `<!-- claim:ID -->` y fuentes `<!-- source:ID -->` deben corresponder a registros Discovery del Work. No inventar IDs, hashes ni cobertura completa. El validador comprueba anclas/texto/procedencia estructurada y huellas locales; no certifica verdad semántica ni quién realizó/autorizó una lectura.
 

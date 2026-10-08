@@ -20,4 +20,6 @@ Un «provisional» no es una decisión canónica confirmada. Si la persona ya di
 - PASS registrado, ejecución histórica y aceptación actual son cosas distintas. Una edición posterior puede volver evidencia stale; conserva el hecho histórico de que un test pasó entonces, no lo reescribas como «nunca ejecutado». La aceptación presente exige evidencia vigente para el criterio y scope actuales.
 - Semántica («¿entendimos intención?», «¿esta evidencia sostiene la recomendación?») requiere revisión del contenido/transcripción. Schema validation, resource link test o checks offline no prueban comprensión, calidad de diálogo, identidad del usuario ni conducta live.
 
-Al cerrar, expresa: objetivo de esta tarea; evidencia que lo cumplió; unknowns/reservas; qué decisión depende de usuario; qué puede avanzar. No un sello global «ready».
+Al cerrar, explica qué próximo paso tiene claridad suficiente, la evidencia relevante y la decisión residual si existe. Una petición plan-only espera aprobación antes de implementar; una implementación ya autorizada continúa sin pedir «continúa» entre tareas. No uses un sello global «ready» ni mantengas research abierto para agotar preguntas futuras.
+
+El readiness de una tarea considera sus decisiones/fuentes y dependencias transitivas: acota preguntas, supuestos y decisiones con taskIds/criterionIds reales. Sin alcance explícito, el bloqueo se considera global y requiere aclaración. Esto no relaja aceptación global: cerrar el Work sigue requiriendo todos los criterios aplicables y evidencia vigente.

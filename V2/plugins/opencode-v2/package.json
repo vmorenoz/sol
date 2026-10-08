@@ -2,7 +2,7 @@
   "name": "sol-opencode-plugin",
   "private": true,
   "type": "module",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "exports": {
     ".": "./index.ts"
   }

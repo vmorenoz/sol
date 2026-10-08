@@ -1,17 +1,18 @@
+# Encargo para {{agente nativo exacto}}
 <!-- template: delegation.md@1.0 -->
 
-<delegation version="1">
-<mode>{{formal-persistent | conversational-ephemeral; Sol chooses explicitly.}}</mode>
-<identity>{{Formal: delegation-id, work-id, work-revision, existing task-ids, exact-agent-name. Efímero: identidad del encargo y exact-agent-name; no fabricar Work/taskIds/revisión ni usar n/a/null para simularlos.}}</identity>
-<objective>{{Resultado observable del encargo, no una instrucción vaga.}}</objective>
-<context>{{Referencias mínimas, decisiones confirmadas, cambios previos y base.}}</context>
-<applicable_preferences>{{Preferencias relevantes, origen/ruta si se conoce e impacto concreto en el encargo; si ninguna aplica, indícalo brevemente.}}</applicable_preferences>
-<skills>{{Nombres y rutas de skills aplicables, cargadas bajo demanda.}}</skills>
-<template>{{Formal: plantilla global y ruta. Efímero: no aplica —respuesta narrativa en chat, sin documento.}}</template>
-<output>{{Formal: ruta única por delegationId, nunca overwrite. Efímero: respuesta en chat, sin report/result.json.}}</output>
-<write_scope>{{Formal: rutas autorizadas. Efímero: vacío salvo lectura acotada autorizada; no crear archivos.}}</write_scope>
-<acceptance>{{Formal: criterio comprobable. Efímero: responder la consulta autorizada sin persistencia.}}</acceptance>
-<constraints>{{No delegar; no editar el índice del proyecto; permisos heredados; incertidumbres.}}</constraints>
-<!-- Formal: schema delegation/result completo y estricto; IDs existentes obligatorios. Efímero: no Work/schema/result; texto narrativo por canal nativo. Output formal ocupado requiere que Sol corrija el encargo con nueva ruta/delegationId; una corrección conserva taskIds/revisión pertinentes y referencia informe previo en contexto/Markdown. Nunca ampliar schemas. Si faltan IDs de un encargo formal, Sol corrige o bloquea; no reclasificarlo como efímero. -->
-<return>{{Formal: result.json completo correlacionado, no cierra Work. Efímero: respuesta narrativa en chat, sin JSON formal ni cierre de Work.}}</return>
-</delegation>
+Guía de contenido para Markdown natural. Adapta estructura y extensión; no hay encabezados obligatorios, parser ni obligación de rellenar cada bloque. La conversación no requiere JSON ni un archivo adicional.
+
+## Objetivo y contexto
+{{Qué resultado necesita Sol, por qué importa y cuál es el próximo paso que habilitará. Fuentes concretas, acuerdos relevantes, hallazgos anteriores y base observada, sin transcripciones completas.}}
+
+## Alcance y aceptación
+{{Lecturas/escrituras autorizadas, exclusiones, resultado comprobable, decisiones pendientes que sí afectan este encargo, recursos compartidos y dependencias. Preferencias aplicables y origen.}}
+
+## Continuidad, si aplica
+{{Work/revisión/taskIds existentes y referencia del encargo nativo. No inventar metadata cuando el trabajo sea de sesión. La persistencia y los permisos son independientes: un cambio local explícitamente autorizado no exige preparar .sol. Si ya corresponde a un Work, conservar su registro.}}
+
+## Entrega esperada
+{{Resultado/hallazgo primero, referencias y evidencia, cambios/comprobaciones si hubo, límites y siguiente paso habilitado. Se responde en Markdown. Si se pidió un artefacto, indicar plantilla y ruta autorizada; el resumen enlaza esa única entrega. No exigir report.md + result.json ni secciones vacías.}}
+
+{{Para una entrega histórica asignar ruta única; una corrección enlaza la anterior sin sobrescribirla. Los archivos vivos conservan sus permisos. Sol verifica el resultado y registra metadata por tools; el especialista no cierra Work, no delega ni cambia permisos.}}
