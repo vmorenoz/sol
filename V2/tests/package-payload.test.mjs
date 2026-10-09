@@ -42,7 +42,8 @@ test('tarball aislado instala sus recursos y ejerce el plugin sobre dos raíces 
   for(const relative of packagedSkills)assert.ok(fs.existsSync(path.join(home,'.config/opencode/skills',relative)),`falta skill/recurso instalado ${relative}`);
   for(const relative of ['contracts.mjs','artifacts.mjs','work-mutations.mjs','schema.mjs','fs.mjs','shipping.mjs','shipping-snapshot.mjs','shipping-authority.mjs'])assert.ok(fs.existsSync(path.join(home,'.sol/lib',relative)),relative);
   for(const relative of filesUnder(path.join(packageRoot,'schemas')))assert.ok(fs.existsSync(path.join(home,'.sol/schemas',relative)),relative);
-  for(const command of ['sol-init','sol-config'])assert.ok(fs.existsSync(path.join(home,`.config/opencode/commands/${command}.md`)),command);
+  assert.equal(fs.existsSync(path.join(home,'.config/opencode/commands/sol-init.md')),false,'sol-init usa la TUI directa');
+  for(const command of ['sol-config'])assert.ok(fs.existsSync(path.join(home,`.config/opencode/commands/${command}.md`)),command);
   for(const skill of ['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship','sol-status','sol-recap','sol-resume']){assert.ok(fs.existsSync(path.join(home,`.config/opencode/skills/${skill}/SKILL.md`)),skill);assert.equal(fs.existsSync(path.join(home,`.config/opencode/commands/${skill}.md`)),false,skill);}
 
   const projectA=path.join(sandbox,'project-a'),projectB=path.join(sandbox,'project-b');
@@ -55,9 +56,9 @@ test('tarball aislado instala sus recursos y ejerce el plugin sobre dos raíces 
     import plugin from ${JSON.stringify(pluginPath)};
     const roots={A:process.env.SOL_TEST_A,B:process.env.SOL_TEST_B};
     const registered=new Map();
-    const ctx={tool:{transform:async callback=>callback({add:tool=>registered.set(tool.name,tool)})},session:{get:async ({sessionID})=>({location:{directory:roots[sessionID]}})}};
+    const ctx={permission:{hook:async()=>{}},tool:{transform:async callback=>callback({add:tool=>registered.set(tool.name,tool)})},session:{get:async ({sessionID})=>({location:{directory:roots[sessionID]}})}};
     await plugin.setup(ctx);
-    const call=async(name,sessionID,args={})=>registered.get(name).execute(args,{sessionID,signal:new AbortController().signal});
+    const call=async(name,sessionID,args={})=>registered.get(name).execute(args,{sessionID,agent:'sol',id:'call_test',messageID:'msg_test',signal:new AbortController().signal});
     await call('sol_workspace_prepare','A'); await call('sol_workspace_prepare','B');
     const createdA=await call('sol_work_create','A',{workId:'SAME-ID',title:'Proyecto A',objective:'Resultado A',criterion:'Criterio A',verification:'Verificar A'});
     const createdB=await call('sol_work_create','B',{workId:'SAME-ID',title:'Proyecto B',objective:'Resultado B',criterion:'Criterio B',verification:'Verificar B'});
@@ -89,7 +90,7 @@ test('tarball aislado instala sus recursos y ejerce el plugin sobre dos raíces 
     const preflightNoRepo=await call('sol_ship_preflight','A',{workId:'SAME-ID',expectedRevision:5,request:{repository:'owner/repo',remote:'origin',branch:'feature',base:'main',title:'Ship',body:'',commitMessage:'Ship',actions:['create_commit'],expectedPaths:['src/value.mjs'],includedCommitShas:[]}});
     const forgedAuthorize=await call('sol_ship_authorize','A',{workId:'SAME-ID',expectedRevision:5,intentId:'INTENT-1',snapshotSha256:'d'.repeat(64),approved:true,root:roots.B,actor:'user'});
     const authorizeInput=registered.get('sol_ship_authorize').input,preflightInput=registered.get('sol_ship_preflight').input;
-    const missingSession=await registered.get('sol_status').execute({},{});
+    const missingSession=await registered.get('sol_status').execute({},{agent:'sol',signal:new AbortController().signal});
      const actionSchema=input.properties.actions.items;
     const union=actionSchema.anyOf||actionSchema.oneOf;
     const actionKinds=union.map(branch=>deref(branch,input).properties?.type?.const);
@@ -128,7 +129,7 @@ test('tarball aislado instala sus recursos y ejerce el plugin sobre dos raíces 
   assert.deepEqual(response.authorizeProperties,['workId','expectedRevision','intentId','snapshotSha256'],'no hay actor/approved/root/token caller-controlled');
   assert.equal(response.authorizeClosed,true);assert.equal(response.preflightClosed,true);
   assert.match(response.preflightNoRepo.content,/No se completó sol_ship_preflight/);
-  assert.match(response.forgedAuthorize.content,/Intent ausente, no previsualizado o snapshot diferente/,'approved/root arbitrarios no suplen intent ni native ASK');
+  assert.match(response.forgedAuthorize.content,/Permiso nativo Sol no acreditado/,'approved/root arbitrarios no suplen native ASK');
 
   const refSchema={type:'object',additionalProperties:false,required:['workId','expectedRevision','actions'],properties:{workId:{type:'string'},expectedRevision:{type:'integer'},actions:{type:'array',items:{$ref:'#/$defs/actionUnion'}}},$defs:{
     actionUnion:{oneOf:[{$ref:'#/$defs/intentAction'},{$ref:'#/$defs/approvalAction'}]},
@@ -137,7 +138,7 @@ test('tarball aislado instala sus recursos y ejerce el plugin sobre dos raíces 
     approvalAction:{type:'object',additionalProperties:false,required:['type','approvedAt'],properties:{type:{const:'shipping.approval.record'},approvedAt:{type:'string'}}},
   }};
   fs.writeFileSync(path.join(home,'.sol/schemas/work-update.schema.json'),JSON.stringify(refSchema));
-  const refChild=`import plugin from ${JSON.stringify(pluginPath)}; const registered=new Map(); await plugin.setup({tool:{transform:async callback=>callback({add:tool=>registered.set(tool.name,tool)})}}); const input=registered.get('sol_work_apply').input; console.log(JSON.stringify({itemRef:input.properties.actions.items.$ref,union:input.$defs.actionUnion.oneOf,hasPayloadDef:!!input.$defs.intentPayload,hasPrivateDefinition:!!input.$defs.approvalAction}));`;
+  const refChild=`import plugin from ${JSON.stringify(pluginPath)}; const registered=new Map(); await plugin.setup({permission:{hook:async()=>{}},tool:{transform:async callback=>callback({add:tool=>registered.set(tool.name,tool)})}}); const input=registered.get('sol_work_apply').input; console.log(JSON.stringify({itemRef:input.properties.actions.items.$ref,union:input.$defs.actionUnion.oneOf,hasPayloadDef:!!input.$defs.intentPayload,hasPrivateDefinition:!!input.$defs.approvalAction}));`;
   const refRun=spawnSync(process.execPath,['--experimental-strip-types','--input-type=module','-e',refChild],{cwd:sandbox,encoding:'utf8',timeout:60_000,env:{...process.env,HOME:home,USERPROFILE:home}});
   assert.equal(refRun.error,undefined,`${refRun.error?.message}`);assert.equal(refRun.status,0,`${refRun.stdout}\n${refRun.stderr}`);
   const refOutput=JSON.parse(refRun.stdout.trim().split('\n').at(-1));

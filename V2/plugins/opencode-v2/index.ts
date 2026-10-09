@@ -2,21 +2,25 @@ import os from "node:os"
 import path from "node:path"
 import fs from "node:fs"
 import { pathToFileURL } from "node:url"
+import { createPermissionBridge } from "./permission-bridge.mjs"
 import { createVersionReader } from "./version-view.mjs"
 import { formatStatusPage, formatWorkView, pageBounds, workSections } from "./work-views.mjs"
 
 // Narrow structural surface from the official OpenCode v2 documentation (2026-10-08).
 // This is not a claim that a published SDK version or a live host has been tested.
 type WorkQuery = { section?: string; offset?: number; limit?: number; itemId?: string; taskId?: string; criterionId?: string }
-type NativeSession = { id?: string; sessionID?: string; location?: { directory?: string }; model?: { providerID: string; id: string; variant?: string } }
+type NativeSession = { agent?: string; metadata?: Record<string, unknown>; id?: string; sessionID?: string; location?: { directory?: string }; model?: { providerID: string; id: string; variant?: string } }
 type NativeModel = { providerID: string; id: string; name?: string; enabled: boolean; status: string; variants?: readonly { id: string }[] }
-type NativeToolContext = { sessionID: string; signal: AbortSignal }
-type NativeTool = { name: string; description: string; input: unknown; execute(input: unknown, context: NativeToolContext): Promise<{ content: string }> }
+type NativeToolContext = { sessionID: string; agent: string; id: string; messageID: string; signal: AbortSignal }
+type NativeTool = { name: string; options?: { permission: string }; description: string; input: unknown; execute(input: unknown, context: NativeToolContext): Promise<{ content: string }> }
 type NativeToolEditor = { add(tool: NativeTool): void }
 type OpenCodeV2Context = {
+  rpc?: any
+  event?: any
   app?: { version: string }
   tool: { transform(edit: (editor: NativeToolEditor) => void): Promise<unknown> }
   session: { get(input: { sessionID: string }): Promise<NativeSession> }
+  permission: { hook(name: "evaluate", callback: (event: { sessionID: string; action: string; resources: readonly string[]; effect: string; message?: string }) => Promise<void>): Promise<unknown> }
   model: { list(input: { location: { directory: string } }): Promise<{ data: readonly NativeModel[] }> }
 }
 
@@ -137,15 +141,38 @@ export default {
   id: "sol",
   async setup(ctx: OpenCodeV2Context) {
     const readVersion = await createVersionReader(ctx.app?.version)
+    const permissionBridge = await createPermissionBridge(ctx)
+    // This hook only narrows the host decision; it cannot grant permissions.
+    await ctx.permission.hook("evaluate", async event => {
+      if (!["edit", "subagent"].includes(event.action)) return
+      const session = await ctx.session.get({ sessionID: event.sessionID })
+      const init = session.metadata?.solInit as { output?: string } | undefined
+      if (!init) return
+      const directory = session.location?.directory
+      const allowed = typeof directory === "string" && path.isAbsolute(directory) && typeof init.output === "string"
+        ? path.resolve(directory, init.output) : undefined
+      if (event.action === "subagent" || !allowed || event.resources.some(resource => path.resolve(directory!, resource) !== allowed)) {
+        event.effect = "deny"
+        event.message = "El mapeo inicial solo puede escribir el artefacto de exploración asignado."
+      }
+    })
 
-    const register = (editor: NativeToolEditor, name: string, description: string, input: unknown, run: (args: any, root: string, session?: NativeSession) => Promise<string>) => {
-      editor.add({ name, description, input, async execute(args: unknown, context: NativeToolContext) {
+    const register = (editor: NativeToolEditor, name: string, description: string, input: unknown, run: (args: any, root: string, session: NativeSession, assertActive: () => void) => Promise<string>) => {
+      editor.add({ name, options: { permission: name }, description, input, async execute(args: unknown, context: NativeToolContext) {
         try {
+          const assertActive = () => { permissionBridge.assertActive(); if (context?.signal?.aborted) throw new Error("Operación cancelada; no se iniciaron nuevos cambios.") }
+          assertActive()
+          if (context?.agent !== "sol") throw new Error("Esta herramienta requiere el agente Sol principal; no se modificó ningún archivo.")
           if (!context?.sessionID) throw new Error("OpenCode no proporcionó la sesión actual; no se modificó ningún archivo.")
           const session = await ctx.session.get({ sessionID: context.sessionID })
+          assertActive()
           const activeDirectory = session.location?.directory
           if (typeof activeDirectory !== "string" || !path.isAbsolute(activeDirectory)) throw new Error("OpenCode no proporcionó el directorio de esta sesión; no se modificó ningún archivo.")
-          return { content: await run(args, path.resolve(activeDirectory), { ...session, sessionID: context.sessionID }) }
+          if (name === "sol_ship_authorize" || (["sol_config_apply", "sol_artifacts_set"].includes(name) && (args as any)?.dryRun === false)) {
+            await permissionBridge.authorize({ action: name, input: args, resources: [path.resolve(activeDirectory)], context })
+            assertActive()
+          }
+          return { content: await run(args, path.resolve(activeDirectory), { ...session, sessionID: context.sessionID }, assertActive) }
         }
         catch (error) { return { content: `No se completó ${name}: ${(error as Error).message}` } }
       } })
@@ -163,9 +190,9 @@ export default {
       editor.add({ name: "sol_version", description: "Identifica el payload cargado por esta instancia y la instalación actual; indica si requiere recarga.", input: object({}, []), async execute() {
         return { content: readVersion() }
       } })
-      register(editor, "sol_workspace_prepare", "Inicializa el espacio Sol del workspace activo; conserva cualquier dato existente.", object({}, []), async (_args, root) => {
+      register(editor, "sol_workspace_prepare", "Inicializa el espacio Sol del workspace activo; conserva cualquier dato existente.", object({}, []), async (_args, root, _session, assertActive) => {
         const { prepareWorkspace } = await core("workspace.mjs");
-        const result = prepareWorkspace(root)
+        assertActive(); const result = prepareWorkspace(root)
         return result.existingWorkspace ? "Sol ya estaba preparado; no se modificaron los datos existentes." : "✓ Sol preparó el workspace con estado, historial y documentos base."
       })
       const pagination = { offset: { type: "integer", minimum: 0, default: 0 }, limit: { type: "integer", minimum: 1, maximum: 20, default: 10 } }
@@ -183,19 +210,19 @@ export default {
         const view = formatWorkView(work, query, scope)
         return [view, ...(!query.section || query.section === "summary" || query.section === "discovery" || query.taskId ? [await readinessSummary(work, query.taskId)] : [])].join("\n")
       })
-      register(editor, "sol_work_create", "Crea un trabajo Sol con objetivo, criterio verificable y prioridad.", object({ workId: id, title: string("Título", 240), objective: string("Resultado esperado"), criterion: string("Criterio de aceptación"), verification: string("Método de verificación"), priority: { enum: workSchema.properties.priority.enum } }, ["workId", "title", "objective", "criterion", "verification"]), async (args, root) => {
-        const { createWorkOperation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); return formatReceipt(createWorkOperation(root, args))
+      register(editor, "sol_work_create", "Crea un trabajo Sol con objetivo, criterio verificable y prioridad.", object({ workId: id, title: string("Título", 240), objective: string("Resultado esperado"), criterion: string("Criterio de aceptación"), verification: string("Método de verificación"), priority: { enum: workSchema.properties.priority.enum } }, ["workId", "title", "objective", "criterion", "verification"]), async (args, root, _session, assertActive) => {
+        const { createWorkOperation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); assertActive(); return formatReceipt(createWorkOperation(root, args))
       })
-      register(editor, "sol_work_apply", "Aplica hasta 20 cambios semánticos tipados en una sola revisión de Work. No acepta JSON completo ni acciones desconocidas.", publicWorkUpdateToolSchema, async (args, root) => {
+      register(editor, "sol_work_apply", "Aplica hasta 20 cambios semánticos tipados en una sola revisión de Work. No acepta JSON completo ni acciones desconocidas.", publicWorkUpdateToolSchema, async (args, root, _session, assertActive) => {
         // A user-reported approval record is documentary metadata, never native authorization.
         // Guard here as well as in the exposed schema: a fixture may invoke execute directly.
         if (Array.isArray(args?.actions) && args.actions.some((action: any) => action?.type === privateApprovalAction)) throw new Error("shipping.approval.record no está disponible mediante sol_work_apply; requiere autorización nativa dedicada.")
-        const { applyWorkMutation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); const receipt = applyWorkMutation(root, args); const { readWork } = await core("artifacts.mjs"); const work = readWork(root, args.workId, { files: false }); return `${formatReceipt(receipt)}\n${await readinessSummary(work)}`
+        const { applyWorkMutation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); assertActive(); const receipt = applyWorkMutation(root, args); const { readWork } = await core("artifacts.mjs"); const work = readWork(root, args.workId, { files: false }); return `${formatReceipt(receipt)}\n${await readinessSummary(work)}`
       })
       const shipRequestSchema = object({
         id: { ...id }, repository: { type: "string", pattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }, remote: { type: "string", minLength: 1, maxLength: 200 }, branch: { type: "string", minLength: 1, maxLength: 300 }, base: { type: "string", minLength: 1, maxLength: 300 },
         title: { type: "string", minLength: 1, maxLength: 300 }, body: { type: "string", maxLength: 10000 }, commitMessage: { type: "string", minLength: 1, maxLength: 1000 },
-        actions: { type: "array", minItems: 1, maxItems: 3, items: { enum: ["create_commit", "push_branch", "create_pr"] } }, expectedPaths: { type: "array", minItems: 1, maxItems: 500, items: { type: "string", minLength: 1 } }, includedCommitShas: { type: "array", maxItems: 100, items: { type: "string", pattern: "^[a-f0-9]{40,64}$" } },
+        actions: { type: "array", minItems: 1, maxItems: 3, items: { enum: ["create_commit", "push_branch", "create_pr"] } }, expectedPaths: { type: "array", minItems: 0, maxItems: 500, items: { type: "string", minLength: 1 } }, includedCommitShas: { type: "array", maxItems: 100, items: { type: "string", pattern: "^[a-f0-9]{40,64}$" } },
       }, ["repository", "remote", "branch", "base", "title", "body", "commitMessage", "actions", "expectedPaths", "includedCommitShas"])
       const shipPreflightInput = object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, request: shipRequestSchema }, ["workId", "expectedRevision", "request"])
       const shipAuthorizeInput = object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, intentId: id, snapshotSha256: { type: "string", pattern: "^[a-f0-9]{64}$" } }, ["workId", "expectedRevision", "intentId", "snapshotSha256"])
@@ -208,7 +235,7 @@ export default {
         const result = buildShippingPreflight({ work, expectedRevision, gitSnapshot, request })
         return JSON.stringify({ ...result, gitSnapshot: undefined }, null, 2)
       })
-      register(editor, "sol_ship_authorize", "Revalida y registra una secuencia Ship exacta. Su permiso nativo predeterminado es ask; solo planifica argv y nunca ejecuta Git/gh. La confianza en la aprobación depende de la política efectiva del host.", shipAuthorizeInput, async ({ workId, expectedRevision, intentId, snapshotSha256 }, root, session) => {
+      register(editor, "sol_ship_authorize", "Revalida y registra una secuencia Ship exacta. Su permiso nativo predeterminado es ask; solo planifica argv y nunca ejecuta Git/gh. La confianza en la aprobación depende de la política efectiva del host.", shipAuthorizeInput, async ({ workId, expectedRevision, intentId, snapshotSha256 }, root, session, assertActive) => {
         if (!session?.id && !session?.sessionID) throw new Error("No hay identidad de sesión para vincular la autorización.")
         const sessionID = session.id || session.sessionID
         const { readWork } = await core("artifacts.mjs")
@@ -226,6 +253,7 @@ export default {
         const fresh = buildShippingPreflight({ work, expectedRevision, gitSnapshot, request })
         if (fresh.blockers.length || fresh.intent?.snapshotSha256 !== snapshotSha256 || fresh.intent?.contentSha256 !== intent.contentSha256) throw new Error(`El repo o Work cambió desde la preview; no se aprobó. ${fresh.blockers.slice(0, 5).join("; ")}`)
         const approvedAt = intent.approval?.approvedAt || new Date().toISOString()
+        assertActive()
         applyWorkMutation(root, { workId, expectedRevision, actions: [{ type: "shipping.approval.record", intentId, snapshotSha256, actions: [...intent.actions], approvedAt }] })
         work = readWork(root, workId, { files: false })
         const approved = work.shipping?.intents?.find((entry: any) => entry.id === intentId)
@@ -234,23 +262,37 @@ export default {
         const nextAction = approved.actions.find((action: any) => !(approved.completedActions || []).includes(action)) || approved.actions[0]
         const argv = buildShippingArgv(approved, nextAction, { receipts: work.shipping.receipts, currentSnapshot: { ...currentSnapshot, workContractSha256: workContractDigest(work) }, currentWork: work, expectedWorkId: workId, expectedRevision: work.revision })
         rememberNativeShippingApproval({ root, sessionID, workId, intent: approved, workContractSha256: workContractDigest(work) })
-        return `Registro declarativo actualizado para el snapshot ${snapshotSha256}; autorización de sesión acotada a este root/session/Work/intent, suponiendo que la política ask efectiva del host permitió esta invocación. El plugin no puede acreditar criptográficamente la interacción UI ni inspeccionar overrides de permisos. No se ejecutó ninguna acción. Primer paso argv planificado:\n${JSON.stringify(argv)}`
+        return `Registro declarativo actualizado para el snapshot ${snapshotSha256}; autorización de sesión acotada a este root/session/Work/intent, tras observar la pregunta y respuesta nativas coincidentes del host para esta invocación. No se ejecutó ninguna acción. Primer paso argv planificado:\n${JSON.stringify(argv)}`
       })
-      register(editor, "sol_work_close", "Cierra un Work tras validar evidencia positiva y revisión vigente.", object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, outcome: { enum: ["done", "cancelled"] }, summary: string("Resultado o motivo"), limitations: list(string("Limitación", 1000), 30) }, ["workId", "expectedRevision", "summary"]), async (args, root) => {
-        const { closeWorkOperation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); return formatReceipt(closeWorkOperation(root, args))
+      register(editor, "sol_work_close", "Cierra un Work tras validar evidencia positiva y revisión vigente.", object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, outcome: { enum: ["done", "cancelled"] }, summary: string("Resultado o motivo"), limitations: list(string("Limitación", 1000), 30) }, ["workId", "expectedRevision", "summary"]), async (args, root, _session, assertActive) => {
+        const { closeWorkOperation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); assertActive(); return formatReceipt(closeWorkOperation(root, args))
       })
-      register(editor, "sol_work_reopen", "Reabre un Work cerrado con motivo y nueva revisión de ciclo.", object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, reason: string("Motivo") }, ["workId", "expectedRevision", "reason"]), async (args, root) => {
-        const { reopenWorkOperation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); return formatReceipt(reopenWorkOperation(root, args))
+      register(editor, "sol_work_reopen", "Reabre un Work cerrado con motivo y nueva revisión de ciclo.", object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, reason: string("Motivo") }, ["workId", "expectedRevision", "reason"]), async (args, root, _session, assertActive) => {
+        const { reopenWorkOperation } = await core("work-mutations.mjs"); const { formatReceipt } = await core("receipts.mjs"); assertActive(); return formatReceipt(reopenWorkOperation(root, args))
       })
-      register(editor, "sol_history", "Consulta cierres por Work o por fechas ISO; resultado limitado.", object({ workId: id, since: { type: "string", format: "date-time" }, until: { type: "string", format: "date-time" }, limit: { type: "integer", minimum: 1, maximum: 20 } }, []), async (args, root) => {
+      register(editor, "sol_history", "Consulta cierres por Work o por fechas ISO; resultado limitado.", object({ workId: id, since: { type: "string", format: "date-time" }, until: { type: "string", format: "date-time" }, limit: { type: "integer", minimum: 1, maximum: 20 } }, []), async (args, root, _session, assertActive) => {
         const { readHistory } = await core("work-mutations.mjs"); const entries = readHistory(root, args)
         return entries.length ? entries.map((e: any) => `${e.workId} · ${e.outcome} · ${e.closedAt}\n${e.summary.slice(0, 320)}`).join("\n\n") : "No hay cierres para esa consulta."
       })
       register(editor, "sol_work_validate", "Valida coherencia canónica y, opcionalmente, vigencia de evidencia del proyecto.", object({ fresh: { type: "boolean" } }, []), async ({ fresh = false }, root) => {
         const { validateWorkspace } = await core("work-mutations.mjs"); const result = validateWorkspace(root, { fresh }); return `✓ Sol válido · ${result.works} trabajos · ${result.closures} cierres${fresh ? " · evidencia vigente comprobada" : ""}`
       })
-      register(editor, "sol_project_complete_map", "Registra y cierra el Work reservado al mapeo inicial del proyecto.", object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, summary: string("Resumen verificado"), limitations: list(string("Limitación", 1000), 30) }, ["workId", "expectedRevision", "summary"]), async (args, root) => {
-        const { completeMapOperation } = await core("work-mutations.mjs"); const result = completeMapOperation(root, args); return `✓ ${result.id} mapeado y cerrado · revisión ${result.revision} · evidencia ${result.evidenceId}`
+      register(editor, "sol_project_complete_map", "Registra y cierra el Work reservado al mapeo inicial del proyecto.", object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, summary: string("Resumen verificado"), limitations: list(string("Limitación", 1000), 30) }, ["workId", "expectedRevision", "summary"]), async (args, root, _session, assertActive) => {
+        const { completeMapOperation } = await core("work-mutations.mjs"); assertActive(); const result = completeMapOperation(root, args); return `✓ ${result.id} mapeado y cerrado · revisión ${result.revision} · evidencia ${result.evidenceId}`
+      })
+      register(editor, "sol_init_get", "Consulta el bootstrap init y sus entregas verificadas sin abrir los documentos.", object({ workId: id }, ["workId"]), async (args, root) => {
+        const { readInit } = await core("init.mjs")
+        return JSON.stringify(readInit(root, args), null, 2)
+      })
+      register(editor, "sol_init_project_publish", "Publica el mapa de proyecto integrado solo para un init propio, con revisión y base verificadas.", object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, expectedProjectSha256: { type: ["string", "null"], pattern: "^[a-f0-9]{64}$" }, content: string("Mapa integrado con fuentes, claims y límites verificables", 200000) }, ["workId", "expectedRevision", "expectedProjectSha256", "content"]), async (args, root, _session, assertActive) => {
+        const { publishInitProject } = await core("init.mjs")
+        assertActive(); const result = publishInitProject(root, args)
+        return `✓ Mapa init publicado · ${result.workId} · revisión ${result.revision}`
+      })
+      register(editor, "sol_init_complete", "Cierra el bootstrap init después de validar mapa publicado, entregas y gates vigentes.", object({ workId: id, expectedRevision: { type: "integer", minimum: 1 }, summary: string("Resumen verificado"), limitations: list(string("Limitación", 1000), 30) }, ["workId", "expectedRevision", "summary"]), async (args, root, _session, assertActive) => {
+        const { completeInitMap } = await core("init.mjs")
+        assertActive(); const result = completeInitMap(root, args)
+        return `✓ Init completado · ${result.workId} · revisión ${result.revision}`
       })
       const configAgents = ["sol", "sol-explorer", "sol-executor", "sol-researcher", "sol-planner", "sol-plan-auditor", "sol-qa-auditor", "sol-code-reviewer", "sol-security-auditor", "sol-ui-auditor"]
       const modelQuery = string("Filtro por modelo o proveedor", 120)
@@ -290,7 +332,7 @@ export default {
         const page = matches.slice(offset, offset + limit).map((m: any) => `${m.ref} · ${m.name}${m.variants.length ? ` · variantes: ${m.variants.join(", ")}` : ""}`).join("\n")
         return `Preferencias globales OpenCode · ${current.configPath}\nRevisión: ${current.revision}\nPerfil: ${current.profile}\nPreferencias por agente:\n${rows}\nModelo seleccionado en esta sesión (no se cambia): ${selected}\n${artifactSummary}\nCatálogo disponible para este workspace (${offset + 1}-${Math.min(offset + limit, matches.length)} de ${matches.length}):\n${page || "sin resultados"}${offset + limit < matches.length ? `\nMás: offset ${offset + limit}` : ""}`
       })
-      register(editor, "sol_config_apply", "Previsualiza y coordina preferencias globales de modelos Sol y tracking local del repo elegido; guardar requiere confirmación y aprobación del host.", object({ profile: { enum: ["inherited", "balanced", "custom"] }, overrides: list(object({ agentId: { enum: configAgents }, model: { type: ["string", "null"], maxLength: 300 } }, ["agentId", "model"]), 10), expectedRevision: { type: "string", pattern: "^[a-f0-9]{64}$" }, artifactTracking: { enum: ["local", "versioned"] }, artifactExpectedRevision: { type: "string", pattern: "^[a-f0-9]{64}$" }, dryRun: { type: "boolean", default: true } }, ["profile", "overrides", "expectedRevision", "artifactTracking", "artifactExpectedRevision"]), async ({ profile, overrides = [], expectedRevision, artifactTracking, artifactExpectedRevision, dryRun = true }, root) => {
+      register(editor, "sol_config_apply", "Previsualiza y coordina preferencias globales de modelos Sol y tracking local del repo elegido; guardar requiere confirmación y aprobación del host.", object({ profile: { enum: ["inherited", "balanced", "custom"] }, overrides: list(object({ agentId: { enum: configAgents }, model: { type: ["string", "null"], maxLength: 300 } }, ["agentId", "model"]), 10), expectedRevision: { type: "string", pattern: "^[a-f0-9]{64}$" }, artifactTracking: { enum: ["local", "versioned"] }, artifactExpectedRevision: { type: "string", pattern: "^[a-f0-9]{64}$" }, dryRun: { type: "boolean", default: true } }, ["profile", "overrides", "expectedRevision", "artifactTracking", "artifactExpectedRevision"]), async ({ profile, overrides = [], expectedRevision, artifactTracking, artifactExpectedRevision, dryRun = true }, root, _session, assertActive) => {
         if (new Set(overrides.map((item: any) => item.agentId)).size !== overrides.length) throw new Error("Cada agente puede aparecer una sola vez en overrides.")
         const response = await ctx.model.list({ location: { directory: root } })
         const catalog = Array.isArray(response?.data) ? response.data : []
@@ -303,6 +345,7 @@ export default {
           const changes = plan.changes.map((item: any) => `${item.agentId}: ${safeAssignment(item.before)} → ${safeAssignment(item.after)}`).join("\n") || "sin cambios"
           return `Vista previa combinada (no guardada)\nModelos globales · ${plan.configPath}\nPerfil: ${plan.profile} · revisión: ${plan.revision}\nCambios:\n${changes}\n${plan.migration ? "Migración JSON→JSONC y respaldo privado previstos. " : ""}Tracking local del repo ${trackingPlan.repoRoot || trackingPlan.workspace} · ${trackingPlan.previousMode} → ${trackingPlan.mode} · ${trackingPlan.changed ? "cambios locales previstos" : "sin cambios"}${trackingPlan.sharedMetadata ? " · metadata Git compartida con worktrees" : ""}\n${trackingPlan.changes?.slice(0, 8).join("\n") || "Sin cambios de exclusión/metadata Git."}\nEl esfuerzo por agente es fijo; el modelo de esta sesión no cambiará. Guardar requiere una confirmación nueva y aprobación del host.`
         }
+        assertActive()
         const trackingResult = applyArtifactTracking(trackingPlan)
         let result: any
         try { result = applyModelConfig(plan) }
@@ -318,20 +361,22 @@ export default {
         }
         return `✓ Guardado coordinado · perfil ${result.profile}, ${result.saved ? (result.changed ? "preferencias guardadas" : "sin cambios de modelo") : "modelos no guardados"}, ${result.changes.length} asignaciones cambiadas · tracking ${trackingResult.mode}${trackingResult.changed ? " actualizado" : " sin cambios"}. Configuración global: ${result.configPath}${result.recovery ? ` · respaldo privado: ${result.recovery}` : ""}${trackingResult.recovery ? ` · recuperación privada del tracking: ${trackingResult.recovery}` : ""}. El tracking versioned no sube datos: solo permite que el usuario use Git manualmente. Modelo de sesión no cambiado.`
       })
-      register(editor, "sol_artifacts_get", "Consulta resumen seguro del tracking local del repo Git activo.", object({}, []), async (_args, root) => {
+      register(editor, "sol_artifacts_get", "Consulta resumen seguro del tracking local del repo Git activo.", object({}, []), async (_args, root, _session, assertActive) => {
         const { readArtifactTracking } = await core("artifact-tracking.mjs")
         const state = readArtifactTracking(root)
         return state.available
            ? `Workspace: ${state.workspace}\nRepo Git: ${state.repoRoot}\nModo local: ${state.mode}${state.mode === "unconfigured" ? "\nSin elección guardada. Modo sugerido por defecto: local (esto no significa que .sol/ ya esté excluido)." : ""}\nRutas rastreadas: ${state.trackedCount}\nIgnorado localmente: ${state.ignored ? "sí" : "no"}${state.sharedMetadata ? "\nMetadata compartida entre worktrees" : ""}\nRevisión: ${state.revision}${state.blockers?.length ? `\nBloqueos: ${state.blockers.slice(0, 8).join("; ")}` : ""}`
           : `Tracking local no disponible${state.workspace ? ` · workspace ${state.workspace}` : ""}${state.blockers?.length ? `\nBloqueos: ${state.blockers.slice(0, 8).join("; ")}` : "\nNo hay repo Git aplicable; no se inicializó Git ni se creó estado Sol."}`
       })
-      register(editor, "sol_artifacts_set", "Previsualiza o ajusta tracking local del repo Git activo; no agrega, commitea ni sube datos.", object({ mode: { enum: ["local", "versioned"] }, expectedRevision: { type: "string", pattern: "^[a-f0-9]{64}$" }, dryRun: { type: "boolean", default: true } }, ["mode", "expectedRevision"]), async ({ mode, expectedRevision, dryRun = true }, root) => {
+      register(editor, "sol_artifacts_set", "Previsualiza o ajusta tracking local del repo Git activo; no agrega, commitea ni sube datos.", object({ mode: { enum: ["local", "versioned"] }, expectedRevision: { type: "string", pattern: "^[a-f0-9]{64}$" }, dryRun: { type: "boolean", default: true } }, ["mode", "expectedRevision"]), async ({ mode, expectedRevision, dryRun = true }, root, _session, assertActive) => {
         const { planArtifactTracking, applyArtifactTracking } = await core("artifact-tracking.mjs")
         const plan = planArtifactTracking(root, { mode, expectedRevision })
         if (dryRun) return `Vista previa (no guardada) · repo ${plan.repoRoot || plan.workspace}\nTracking local: ${plan.previousMode} → ${plan.mode}${plan.sharedMetadata ? " · metadata Git compartida con worktrees" : ""}\n${plan.changes?.slice(0, 12).join("\n") || "Sin cambios."}\nNo se ejecutan git add, commit, push ni init.`
+        assertActive()
         const result = applyArtifactTracking(plan)
         return `✓ Tracking ${result.mode} ${result.changed ? "guardado" : "ya estaba configurado"} · ${result.workspace} · ${result.trackedCount ?? plan.trackedCount} rutas rastreadas${result.recovery ? ` · recuperación privada: ${result.recovery}` : ""}. Versionado no sube datos: git add/commit/push siguen siendo decisiones manuales del usuario.`
       })
     })
+    return () => permissionBridge.dispose()
   },
 }

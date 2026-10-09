@@ -1,8 +1,8 @@
-# Sol 2.1 para OpenCode v2
+# Sol 2.2.0 para OpenCode v2
 
 Sol es un asistente de desarrollo que convierte encargos en trabajo coordinado y recuperable. Usa las herramientas de OpenCode para delegar a especialistas y conserva por workspace el objetivo, tareas, decisiones, bloqueos, evidencia y cierres. El código del proyecto sigue siendo la fuente de verdad: Sol organiza el trabajo y ayuda a verificarlo; no sustituye el juicio del usuario ni certifica automáticamente que un cambio sea correcto.
 
-Consulta los [cambios 2.1 y prueba recomendada](docs/HARDENING-2.1.md).
+Consulta la [auditoría 2.2 y sus límites de validación](docs/AUDIT-2.2.md); los [cambios 2.1](docs/HARDENING-2.1.md) quedan como antecedente.
 
 ## Empieza aquí
 
@@ -30,9 +30,9 @@ Describe el resultado que quieres, no una secuencia de herramientas. Por ejemplo
 - «Resume los trabajos cerrados entre el 1 y el 30 de septiembre de 2026 y compáralos con los abiertos.»
 - «Audita los cambios de accesibilidad del formulario; señala evidencia, límites y cualquier verificación que no se haya ejecutado.»
 
-Comandos públicos: `/sol-init` solicita preparación persistente/mapeo inicial y solo configura tracking; `/sol-config` configura explícitamente preferencias de modelos Sol y tracking Local/Versionado; `/sol-version` identifica la versión cargada mediante el comando diagnóstico nativo. No hay comandos de workflow: conversa con Sol («planea esto», «implementa el cambio aprobado», «qué queda», «retoma este trabajo»). Sol carga las skills `sol-new-project`, `sol-onboard`, `sol-discuss`, `sol-plan`, `sol-execute`, `sol-verify`, `sol-ship`, `sol-status`, `sol-recap` y `sol-resume` según intención, estado y autorización. Pregunta solo las decisiones necesarias y continúa lo ya autorizado; plan-only y publicación conservan sus límites. Ningún encargo ordinario inicializa tracking automáticamente. Véase [Descubrimiento](docs/DISCOVERY.md), [orquestación](docs/ORCHESTRATION.md) y [Inventario](docs/INVENTORY.md).
+Comandos públicos: `/sol-init` despacha preparación/mapeo inicial nativo sin turno previo de Sol, con tracking autorizado; `/sol-config` configura explícitamente preferencias de modelos Sol y tracking Local/Versionado; `/sol-version` identifica la versión cargada mediante el comando diagnóstico nativo. No hay comandos de workflow: conversa con Sol («planea esto», «implementa el cambio aprobado», «qué queda», «retoma este trabajo»). Sol carga las skills `sol-new-project`, `sol-onboard`, `sol-discuss`, `sol-plan`, `sol-execute`, `sol-verify`, `sol-ship`, `sol-status`, `sol-recap` y `sol-resume` según intención, estado y autorización. Pregunta solo las decisiones necesarias y continúa lo ya autorizado; plan-only y publicación conservan sus límites. Ningún encargo ordinario inicializa tracking automáticamente. Véase [Descubrimiento](docs/DISCOVERY.md), [orquestación](docs/ORCHESTRATION.md) y [Inventario](docs/INVENTORY.md).
 
-Un saludo, consulta de estado, onboarding readonly o encargo ordinario no prepara ni modifica `.sol/`. Solo una petición explícita de inicialización/preparación persistente o `/sol-init` activa tracking y preparación. Si no hay elección previa, propone Local predeterminado y ofrece Versionado; el estado permanece `unconfigured` hasta preview, confirmación y aprobación host, y sugerir no significa que `.sol/` esté excluido. Sin Git, informa bloqueo y no crea `.sol/` ni inicializa Git. Si el contexto existente basta, no remapees; el mapeo persistente usa ledger Discovery tipado y anclas en `project.md` ([contrato](skills/sol-discovery/references/context-map.md)); `current` solo es validación estructural, y legacy puede quedar `legacy_unverified`.
+Un saludo, consulta de estado, onboarding readonly o encargo ordinario no prepara ni modifica `.sol/`. Init exige tracking Local/Versionado previamente configurado y autorizado; si falta, se bloquea sin crear `.sol/` ni inicializar Git. El dispatcher reserva tareas y lanza Exploradores con outputs individuales; Sol después integra Discovery, publica el mapa con una herramienta estrecha y cierra solo con todas las entregas válidas. Los resultados parciales conservan sus límites. Véase [auditoría 2.2](docs/AUDIT-2.2.md) para correcciones y validación pendiente del host.
 
 ## Modelo mental
 

@@ -8,7 +8,7 @@ Evalúa compatibilidad, riesgo, sobreingeniería y ampliaciones de alcance o per
 Prioriza bloqueos demostrables. Para cada uno indica condición, referencia, impacto y corrección mínima; separa defecto, incertidumbre y mejora opcional.
 </method>
 <result>
-Entrega primero la conclusión y hallazgos accionables, con cobertura de criterios del encargo, base contrastada y límites. Usa review.md si se pidió documento. No reescribas el plan durante la auditoría.
+Entrega primero la conclusión y hallazgos accionables, con cobertura de criterios del encargo, base contrastada y límites. Usa review.md si se asignó documento de entrega/evidencia. No reescribas el plan durante la auditoría.
 Una auditoría completada puede recomendar corregir antes de ejecutar. Si no hay hallazgos, explica qué contrastaste; no certifiques ausencia total de defectos ni aprobación humana.
 </result>
 </specialist>

@@ -45,7 +45,7 @@ test('readonly Git snapshot marks ignored files ignored, never staged',t=>{
   fs.writeFileSync(path.join(root,'.sol/work','SHIP-IGNORED','work.json'),'work one\n');
   fs.appendFileSync(path.join(root,'.git/info/exclude'),'\n.sol/private.md\n');
 
-  const snapshot=observeShippingGit({sessionRoot:root,request:{repository:'owner/repo',remote:'origin',branch:'feature',base:'main',expectedPaths:['README.md']},work:{id:'SHIP-IGNORED',evidence:[]}});
+  const snapshot=observeShippingGit({sessionRoot:root,request:{repository:'owner/repo',remote:'origin',branch:'feature',base:'main',expectedPaths:['README.md','.sol/private.md']},work:{id:'SHIP-IGNORED',evidence:[]}});
   const ignored=snapshot.files.find(file=>file.path==='.sol/private.md');
   assert.deepEqual({staged:ignored.staged,unstaged:ignored.unstaged,untracked:ignored.untracked,ignored:ignored.ignored},{staged:false,unstaged:false,untracked:false,ignored:true});
   fs.writeFileSync(path.join(root,'.sol/work','SHIP-IGNORED','work.json'),'work two\n');
@@ -158,4 +158,28 @@ test('shared comparison catches changed content and accepts exactly the digest h
   compareIntent.workContractSha256=workContractDigest(work);
   assert.equal(compareShippingSnapshot(compareIntent,snap).matches,true);
   assert.equal(compareShippingSnapshot(compareIntent,{...snap,contentSha256:'e'.repeat(64)}).matches,false);
+});
+
+test('clean committed work can preview ordered remaining publication actions without another commit',()=>{
+  const {work,request,gitSnapshot}=fixture();
+  const commit='d'.repeat(40);
+  const clean={...gitSnapshot,localCommits:[commit],files:[]};
+  const remaining={...request,actions:['push_branch','create_pr'],expectedPaths:[],includedCommitShas:[commit]};
+  const result=buildShippingPreflight({work,expectedRevision:4,gitSnapshot:clean,request:remaining});
+  assert.deepEqual(result.blockers,[]);assert.deepEqual(result.intent.actions,['push_branch','create_pr']);
+  assert.equal(result.argvPreview.length,2);assert.equal(result.argvPreview[0][1],'push');
+  for(const actions of [['create_pr','push_branch'],['push_branch','push_branch'],['create_commit']])assert.equal(buildShippingPreflight({work,expectedRevision:4,gitSnapshot:clean,request:{...remaining,actions}}).intent,null);
+});
+
+test('PR-only preview distinguishes included commits from locally observed unpublished commits',()=>{
+  const {work,request,gitSnapshot}=fixture();const commit='d'.repeat(40);
+  const req={...request,actions:['create_pr'],expectedPaths:[],includedCommitShas:[commit]};
+  const clean={...gitSnapshot,files:[],localCommits:[commit]};
+  assert.match(buildShippingPreflight({work,expectedRevision:4,gitSnapshot:clean,request:req}).blockers.join(' '),/refresque explícitamente/);
+  const observed={...clean,publishedHeadSha:head,unpublishedCommitShas:[]};
+  const result=buildShippingPreflight({work,expectedRevision:4,gitSnapshot:observed,request:req});assert.deepEqual(result.blockers,[]);assert.equal(result.argvPreview[0][0],'gh');assert.match(result.warnings.join(' '),/solo con referencia remota local/);
+  assert.match(buildShippingPreflight({work,expectedRevision:4,gitSnapshot:{...observed,unpublishedCommitShas:[commit]},request:req}).blockers.join(' '),/requiere push_branch/);
+});
+test('push-only cannot claim publication of uncommitted preview bytes',()=>{
+ const {work,request,gitSnapshot}=fixture();const result=buildShippingPreflight({work,expectedRevision:4,gitSnapshot,request:{...request,actions:['push_branch']}});assert.equal(result.intent,null);assert.match(result.blockers.join(' '),/Push con cambios locales pendientes requiere create_commit/);
 });

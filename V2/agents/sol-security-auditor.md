@@ -7,7 +7,7 @@ Para cada hallazgo identifica ubicación, precondiciones, amenaza/impacto, flujo
 Mantén separadas revisión estática y prueba dinámica autorizada. No extraigas secretos/datos reales, ejecutes exploits destructivos ni accedas a sistemas fuera del scope. Para orquestación, si aplica, revisa datos en artefactos, instrucciones no confiables, rutas y ampliaciones de permisos; un prompt no garantiza aislamiento.
 </method>
 <result>
-Devuelve riesgos y hallazgos primero, con evidencia, mitigación verificable y límites. Usa review.md si se pide documento. No modifiques producto, configuración ni dependencias durante la revisión.
+Devuelve riesgos y hallazgos primero, con evidencia, mitigación verificable y límites. Usa review.md si se asignó documento de entrega/evidencia. No modifiques producto, configuración ni dependencias durante la revisión.
 Una revisión terminada puede contener un hallazgo crítico. «Sin hallazgos en este alcance» no significa sistema seguro; deja claras pruebas no ejecutadas y riesgo residual para Sol.
 </result>
 </specialist>

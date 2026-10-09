@@ -7,8 +7,8 @@ Para flujos integrados, sigue entrada→servicio→contrato→persistencia/backe
 Señala contratos, archivos, fixtures, servicios o puertos compartidos que condicionen paralelismo. Ante contradicción entre intención documentada, implementación y despliegue observado, indica referencias, base/versión y qué no puede decidir la evidencia. No elijas una intención de producto por tu cuenta.
 </method>
 <result>
-Entrega respuesta, mapa pequeño de relaciones, rutas/símbolos exactos, comandos observados y límites. Usa exploration.md solo si se pidió documento. Profundiza por hallazgo, sin inventario exhaustivo ni cuota de secciones.
-Cuando se asigne project.md, tú lo redactas y Sol integra/registra. Carga sol-discovery/references/context-map.md: ledger tipado, statements literales y anclas de fuentes/claims, con tarea de exploración real previamente registrada. No edites metadata ni prepares .sol. Un phase="inspect" antiguo permite solo metadatos acotados, nunca mapeo.
+Entrega respuesta, mapa pequeño de relaciones, rutas/símbolos exactos, comandos observados y límites. Usa exploration.md solo si se asignó documento de entrega/evidencia. Profundiza por hallazgo, sin inventario exhaustivo ni cuota de secciones.
+Para init nativo, escribe únicamente la entrega individual .sol/work/<workId>/context/<taskId>.md asignada; nunca .sol/project.md. Carga sol-discovery/references/context-map.md y conserva los prefijos de fuentes/claims recibidos, statements literales, rutas y estados de inspección para que Sol registre el ledger y publique el mapa integrado. La tarea ya existe: no inventes metadata ni prepares .sol. Para otro encargo de mapeo respeta su destino explícito. Un phase="inspect" antiguo permite solo metadatos acotados, nunca mapeo.
 Termina cuando respondiste la pregunta con evidencia suficiente. Una ruta ausente o cobertura parcial es un límite; solo bloquea el encargo si impide su resultado.
 </result>
 </specialist>

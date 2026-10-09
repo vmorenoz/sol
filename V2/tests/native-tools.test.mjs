@@ -51,14 +51,14 @@ test('composición mantiene especialistas visibles y permisos de autoridad intac
 });
 test('sol_version conserva identidad cargada y detecta cambios de instalación sin una sesión',t=>{
   const home=fs.mkdtempSync(path.join(os.tmpdir(),'sol-native-version-'));t.after(()=>fs.rmSync(home,{recursive:true,force:true}));
-  const identity=preparePluginVersionFixture(home);
+  const identity=preparePluginVersionFixture(home,{version:'2.1.1'});
   const schemas=path.join(home,'.sol/schemas');fs.mkdirSync(schemas,{recursive:true});
   for(const file of ['work.schema.json','work-update.schema.json'])fs.copyFileSync(path.join(root,'schemas',file),path.join(schemas,file));
   fs.writeFileSync(path.join(home,'.sol/installation.json'),JSON.stringify({schemaVersion:1,files:{},...identity}));
   const code=`
     import fs from 'node:fs';import path from 'node:path';import plugin from ${JSON.stringify(path.join(root,'plugins/opencode-v2/index.ts'))};
     const registered=new Map();let sessionCalls=0;
-    await plugin.setup({app:{version:'2.0.20-fixture'},tool:{transform:async edit=>edit({add:tool=>registered.set(tool.name,tool)})},session:{get:async()=>{sessionCalls++;throw Error('session unavailable')}}});
+    await plugin.setup({app:{version:'2.0.20-fixture'},permission:{hook:async()=>{}},tool:{transform:async edit=>edit({add:tool=>registered.set(tool.name,tool)})},session:{get:async()=>{sessionCalls++;throw Error('session unavailable')}}});
     const tool=registered.get('sol_version'),before=await tool.execute({},{});
     const manifest=path.join(process.env.HOME,'.sol/installation.json');
     fs.writeFileSync(manifest,JSON.stringify({schemaVersion:1,files:{},...${JSON.stringify(identity)},version:'2.2.0',buildHash:'b'.repeat(64)}));
@@ -75,14 +75,14 @@ test('sol_version conserva identidad cargada y detecta cambios de instalación s
 });
 test('/sol-version abre un diálogo CLI estático sin llamadas a modelo ni sesión',t=>{
   const home=fs.mkdtempSync(path.join(os.tmpdir(),'sol-cli-version-'));t.after(()=>fs.rmSync(home,{recursive:true,force:true}));
-  const identity=preparePluginVersionFixture(home);
+  const identity=preparePluginVersionFixture(home,{version:'2.1.1'});
   fs.writeFileSync(path.join(home,'.sol/installation.json'),JSON.stringify({schemaVersion:1,files:{},...identity}));
   const code=`
     import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';
     import plugin from ${JSON.stringify(path.join(root,'plugins/opencode-v2/tui.ts'))};
     const layers=[],dialogs=[];let modelCalls=0;
     const forbidden=new Proxy({}, {get(){modelCalls++;throw Error('No model/session/client access permitted')}});
-    await plugin.setup({app:{version:'2.0.20-fixture'},keymap:{layer:factory=>{const layer=factory();assert.equal(JSON.stringify(factory()),JSON.stringify(layer));layers.push(layer)}},ui:{dialog:{alert:async input=>{dialogs.push(input)}}},client:forbidden,session:forbidden,model:forbidden,generate:forbidden});
+    await plugin.setup({app:{version:'2.0.20-fixture'},keymap:{layer:factory=>{const layer=factory();assert.equal(JSON.stringify(factory()),JSON.stringify(layer));layers.push(layer)}},ui:{dialog:{alert:async input=>{dialogs.push(input)}}},client:{session:forbidden,model:forbidden},session:forbidden,model:forbidden,generate:forbidden});
     const command=layers[0].commands[0];assert.equal(command.slash.name,'sol-version');assert.equal(command.palette,true);
     assert.equal(dialogs.length,0);await command.run();
     fs.writeFileSync(path.join(process.env.HOME,'.sol/installation.json'),JSON.stringify({schemaVersion:1,files:{},...${JSON.stringify(identity)},version:'2.2.0',buildHash:'b'.repeat(64)}));

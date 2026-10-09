@@ -16,8 +16,8 @@ const put=(home,file,bytes)=>{const target=path.join(home,file);fs.mkdirSync(pat
 
 test('composition exposes only administrative dispatchers and keeps all workflow skills model-loadable',()=>{
   const files=composeNativeFiles({root});
-  assert.deepEqual(solCommandNames,['sol-init','sol-config']);
-  assert.deepEqual([...files.keys()].filter(name=>name.startsWith('.opencode/commands/')).sort(),['.opencode/commands/sol-config.md','.opencode/commands/sol-init.md']);
+  assert.deepEqual(solCommandNames,['sol-config']);
+  assert.deepEqual([...files.keys()].filter(name=>name.startsWith('.opencode/commands/')).sort(),['.opencode/commands/sol-config.md']);
   for(const name of workflow){
     const skill=String(files.get(`.opencode/skills/${name}/SKILL.md`));
     assert.match(skill,/\nslash: false\n/);
@@ -38,7 +38,7 @@ test('upgrade removes owned workflow dispatchers, preserves foreign and borrowed
   const home=temp(t);install(options(home));
   const manifestPath=path.join(home,'.sol/installation.json');
   const manifest=JSON.parse(fs.readFileSync(manifestPath));
-  for(const name of workflow){
+  for(const name of [...workflow,'sol-init']){
     const file=`${oc}/commands/${name}.md`,bytes=`old owned dispatcher ${name}\n`;
     put(home,file,bytes);manifest.files[file]=sha256(bytes);
   }
@@ -47,9 +47,9 @@ test('upgrade removes owned workflow dispatchers, preserves foreign and borrowed
   manifest.files[borrowed]=sha256('shared command');manifest.borrowed=[...(manifest.borrowed||[]),borrowed];
   fs.writeFileSync(manifestPath,JSON.stringify(manifest));
   const preview=install({...options(home),dryRun:true});
-  for(const name of workflow){const file=`${oc}/commands/${name}.md`;assert.ok(preview.removals.includes(file));assert.ok(fs.existsSync(path.join(home,file)));}
+  for(const name of [...workflow,'sol-init']){const file=`${oc}/commands/${name}.md`;assert.ok(preview.removals.includes(file));assert.ok(fs.existsSync(path.join(home,file)));}
   const result=install(options(home)),recovery=JSON.parse(fs.readFileSync(path.join(result.recovery,'recovery.json')));
-  for(const name of workflow){
+  for(const name of [...workflow,'sol-init']){
     const file=`${oc}/commands/${name}.md`;
     assert.equal(fs.existsSync(path.join(home,file)),false);
     assert.ok(fs.existsSync(path.join(home,oc,'skills',name,'SKILL.md')));
@@ -58,7 +58,11 @@ test('upgrade removes owned workflow dispatchers, preserves foreign and borrowed
   }
   assert.equal(fs.readFileSync(path.join(home,foreign),'utf8'),'foreign command');
   assert.equal(fs.readFileSync(path.join(home,borrowed),'utf8'),'shared command');
-  for(const name of ['sol-init','sol-config'])assert.ok(fs.existsSync(path.join(home,oc,'commands',name+'.md')));
+  assert.ok(fs.existsSync(path.join(home,oc,'commands/sol-config.md')));
+  assert.equal(fs.existsSync(path.join(home,oc,'commands/sol-init.md')),false);
+  const tui=fs.readFileSync(path.join(home,oc,'plugins/sol/tui.ts'),'utf8');
+  assert.match(tui,/slash: \{ name: "sol-init"/);
+  assert.match(tui,/slash: \{ name: "sol-version"/);
   const primary=fs.readFileSync(path.join(home,oc,'agents/sol.md'),'utf8');
   assert.doesNotMatch(primary,/solo al primer encargo concreto/);
   assert.match(primary,/un encargo ordinario nunca autoriza auto-init/);

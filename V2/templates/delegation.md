@@ -13,6 +13,6 @@ Guía de contenido para Markdown natural. Adapta estructura y extensión; no hay
 {{Work/revisión/taskIds existentes y referencia del encargo nativo. No inventar metadata cuando el trabajo sea de sesión. La persistencia y los permisos son independientes: un cambio local explícitamente autorizado no exige preparar .sol. Si ya corresponde a un Work, conservar su registro.}}
 
 ## Entrega esperada
-{{Resultado/hallazgo primero, referencias y evidencia, cambios/comprobaciones si hubo, límites y siguiente paso habilitado. Se responde en Markdown. Si se pidió un artefacto, indicar plantilla y ruta autorizada; el resumen enlaza esa única entrega. No exigir report.md + result.json ni secciones vacías.}}
+{{Resultado/hallazgo primero, referencias y evidencia, cambios/comprobaciones si hubo, límites y siguiente paso habilitado. Se responde en Markdown. Si se pidió un artefacto o el Work requiere evidencia persistente, indicar plantilla, ruta única autorizada y writeScope desde el inicio; el mismo Markdown sirve como entrega/report de evidencia y el resumen lo enlaza. Sin Work puede bastar el mensaje. No exigir report.md + result.json ni secciones vacías.}}
 
 {{Para una entrega histórica asignar ruta única; una corrección enlaza la anterior sin sobrescribirla. Los archivos vivos conservan sus permisos. Sol verifica el resultado y registra metadata por tools; el especialista no cierra Work, no delega ni cambia permisos.}}

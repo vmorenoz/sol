@@ -32,7 +32,7 @@ test('readiness, frescura y map status se informan conservadoramente con APIs/es
   assert.match(workflow,/ni equivale a acceptance actual/);
 });
 
-test('recuperación de Ship nunca convierte metadata persistida en autoridad y Plan/readonly no persisten',()=>{
+test('recuperación separa autoridad de Ship, readonly y persistencia autorizada de un plan',()=>{
   const resume=read('skills/sol-resume/SKILL.md');
   const workflow=read('docs/WORKFLOW.md');
   assert.match(resume,/sol_ship_preflight/);
@@ -40,9 +40,14 @@ test('recuperación de Ship nunca convierte metadata persistida en autoridad y P
   assert.match(resume,/sol_ship_authorize/);
   assert.match(resume,/nueva sesión/);
   assert.match(resume,/no reconstruyas “approved”/);
-  assert.match(resume,/solo lectura o un plan[\s\S]*no persistas cambios, no reabras ni delegues seguimiento formal/);
+  assert.match(resume,/solo lectura o excluye persistencia[\s\S]*no persistas cambios, no reabras ni delegues seguimiento formal/);
   assert.match(workflow,/intención\/preview\/recibos de Ship preservan destino y scope pero no la autorización privada/);
-  assert.match(workflow,/readonly o un plan no persiste cambios/);
+  assert.match(workflow,/readonly o que excluye persistencia no persiste cambios/);
+  assert.match(resume,/Plan-only limita la implementación de producto[\s\S]*persistencia está autorizada/);
+  assert.match(resume,/Work vigente con ese alcance autorizado, conserva su registro/);
+  assert.match(resume,/sin Work ni autorización de persistencia[\s\S]*sin inicializar/);
+  assert.match(resume,/«plan» por sí sola no autoriza nuevas escrituras ni reabrir/);
+  assert.match(workflow,/Plan-only prohíbe implementar producto[\s\S]*persistencia ya autorizada/);
 });
 
 test('esta suite solo verifica presencia de guía, no comportamiento nativo/live',()=>{

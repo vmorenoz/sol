@@ -70,8 +70,8 @@ export function applyWorkMutation(root,{workId,expectedRevision,actions}) {
         const task=structuredClone(action.task);task.kind=task.kind||'implementation';task.contractRevision=task.contractRevision||1;
         task.title=text(task.title,'task.title',{max:300});
         candidate.tasks.push(task);
-        if(task.kind==='implementation'&&task.status==='in_progress'&&!deriveTaskReadiness(candidate,task.id).implementationReady)throw new Error(`No se puede iniciar implementación: ${deriveTaskReadiness(candidate,task.id).implementationReasons.join('; ')}`);
-        if(task.status==='done'){if(task.kind==='implementation'&&!deriveTaskReadiness(candidate,task.id).implementationReady)throw new Error(`No se puede completar implementación: ${deriveTaskReadiness(candidate,task.id).implementationReasons.join('; ')}`);assertTaskAcceptanceFresh(root,candidate,task);}
+        if(task.status==='in_progress'&&!deriveTaskReadiness(candidate,task.id).ready)throw new Error(`No se puede iniciar ${(task.kind||'implementation')==='implementation'?'implementación':'tarea'}: ${deriveTaskReadiness(candidate,task.id).reasons.join('; ')}`);
+        if(task.status==='done'){if(!deriveTaskReadiness(candidate,task.id).ready)throw new Error(`No se puede completar ${(task.kind||'implementation')==='implementation'?'implementación':'tarea'}: ${deriveTaskReadiness(candidate,task.id).reasons.join('; ')}`);assertTaskAcceptanceFresh(root,candidate,task);}
         changes.push(`${task.id} agregada`);break;
       }
       case 'task.update': {
@@ -85,7 +85,7 @@ export function applyWorkMutation(root,{workId,expectedRevision,actions}) {
         if(patch.kind!==undefined)task.kind=patch.kind;
         if(patch.summary!==undefined)task.summary=text(patch.summary,'task.summary',{required:false,max:2000});
         for(const key of ['criterionIds','dependsOn','resources','acceptance','writeScope'])if(patch[key]!==undefined)task[key]=list(patch[key],`task.${key}`).map(v=>text(v,`task.${key}`,{max:1000}));
-        if(task.status==='in_progress'&&(task.kind||'implementation')==='implementation'&&!deriveTaskReadiness(candidate,task.id).ready)throw new Error(`No se puede iniciar implementación: ${deriveTaskReadiness(candidate,task.id).reasons.join('; ')}`);
+        if(task.status==='in_progress'&&!deriveTaskReadiness(candidate,task.id).ready)throw new Error(`No se puede iniciar ${(task.kind||'implementation')==='implementation'?'implementación':'tarea'}: ${deriveTaskReadiness(candidate,task.id).reasons.join('; ')}`);
         if(['title','kind','criterionIds','dependsOn','writeScope','resources','acceptance'].some(k=>patch[k]!==undefined))invalidateContracts(candidate,{taskIds:[task.id]},`Contrato de tarea ${task.id} actualizado`);
         changes.push(`${task.id} actualizada`);break;
       }
@@ -93,9 +93,11 @@ export function applyWorkMutation(root,{workId,expectedRevision,actions}) {
         keys(action,['type','taskId','status','summary']);
         assertID(action.taskId);const task=candidate.tasks.find(t=>t.id===action.taskId);if(!task)throw new Error(`Tarea inexistente: ${action.taskId}`);
         if(!['pending','in_progress','blocked','paused','done','cancelled'].includes(action.status))throw new Error('Estado de tarea inválido');
+        if(task.status==='done'&&action.status!=='done')invalidateContracts(candidate,{taskIds:[task.id]},`Aceptación de ${task.id} retirada al cambiar a ${action.status}`);
+        // Preserve the explicitly requested state (including cancellation); only dependant acceptance is reset.
         task.status=action.status;if(action.summary!==undefined)task.summary=text(action.summary,'task.summary',{max:2000});
-        if(action.status==='in_progress'&&(task.kind||'implementation')==='implementation'&&!deriveTaskReadiness(candidate,task.id).implementationReady)throw new Error(`No se puede iniciar implementación: ${deriveTaskReadiness(candidate,task.id).implementationReasons.join('; ')}`);
-        if(action.status==='done'){if((task.kind||'implementation')==='implementation'&&!deriveTaskReadiness(candidate,task.id).implementationReady)throw new Error(`No se puede completar implementación: ${deriveTaskReadiness(candidate,task.id).implementationReasons.join('; ')}`);assertTaskAcceptanceFresh(root,candidate,task);}
+        if(action.status==='in_progress'&&!deriveTaskReadiness(candidate,task.id).ready)throw new Error(`No se puede iniciar ${(task.kind||'implementation')==='implementation'?'implementación':'tarea'}: ${deriveTaskReadiness(candidate,task.id).reasons.join('; ')}`);
+        if(action.status==='done'){if(!deriveTaskReadiness(candidate,task.id).ready)throw new Error(`No se puede completar ${(task.kind||'implementation')==='implementation'?'implementación':'tarea'}: ${deriveTaskReadiness(candidate,task.id).reasons.join('; ')}`);assertTaskAcceptanceFresh(root,candidate,task);}
         if(action.status==='cancelled'&&!task.summary.trim())throw new Error('Tarea cancelada requiere motivo');
         changes.push(`${task.id} ${action.status==='done'?'completada':action.status}`);break;
       }
@@ -125,14 +127,19 @@ export function applyWorkMutation(root,{workId,expectedRevision,actions}) {
         const patch=action.patch;if(!patch||typeof patch!=='object'||Array.isArray(patch))throw new Error('evidence.update requiere patch');
         const allowed=new Set(['kind','status','report','command','cwd','exitCode','basis','files','summary']);
         for(const key of Object.keys(patch))if(!allowed.has(key))throw new Error(`Campo de evidencia no actualizable: ${key}`);
+        const beforeEvidence=structuredClone(evidence);
+        const acceptedTaskIds=candidate.tasks.filter(t=>t.status==='done'&&t.evidenceIds.includes(evidence.id)).map(t=>t.id);
         Object.assign(evidence,patch);
         if(patch.files!==undefined)evidence.files=list(patch.files,'evidence.files',50).map(p=>fingerprint(root,p));
         if(!evidence.files.length)throw new Error('La evidencia requiere al menos un archivo');
+        if(acceptedTaskIds.length&&!sameRecord(beforeEvidence,evidence))invalidateContracts(candidate,{taskIds:acceptedTaskIds},`Evidencia aceptada ${evidence.id} modificada; requiere nueva aceptación`);
         evidence.checkedAt=now();changes.push(`${evidence.id} actualizada`);break;
       }
       case 'evidence.remove': {
         keys(action,['type','evidenceId']);
         assertID(action.evidenceId);const index=candidate.evidence.findIndex(e=>e.id===action.evidenceId);if(index<0)throw new Error(`Evidencia inexistente: ${action.evidenceId}`);
+        const acceptedTaskIds=candidate.tasks.filter(t=>t.status==='done'&&t.evidenceIds.includes(action.evidenceId)).map(t=>t.id);
+        if(acceptedTaskIds.length)invalidateContracts(candidate,{taskIds:acceptedTaskIds},`Evidencia aceptada ${action.evidenceId} retirada; requiere nueva aceptación`);
         candidate.evidence.splice(index,1);for(const c of candidate.objective.criteria)c.evidenceIds=c.evidenceIds.filter(id=>id!==action.evidenceId);for(const t of candidate.tasks)t.evidenceIds=t.evidenceIds.filter(id=>id!==action.evidenceId);
         changes.push(`${action.evidenceId} retirada`);break;
       }
@@ -193,7 +200,15 @@ export function applyWorkMutation(root,{workId,expectedRevision,actions}) {
         keys(action,['type','questionId','answer']);const q=candidate.discovery?.questions.find(x=>x.id===action.questionId);if(!q)throw new Error('Pregunta inexistente');const answer=structuredClone(action.answer);if(q.answer&&!sameRecord(q.answer,answer))throw new Error(`Respuesta de ${q.id} es inmutable; registre nueva pregunta y decisión.supersede con motivo`);q.answer=answer;changes.push(`pregunta ${q.id} respondida`);break;
       }
       case 'discovery.decision.supersede': {
-        keys(action,['type','decisionId','replacement','reason']);const prior=candidate.discovery?.decisions.find(x=>x.id===action.decisionId);if(!prior)throw new Error('Decisión inexistente');if(prior.status==='superseded')throw new Error(`Decisión ${prior.id} ya fue sustituida`);const replacement=structuredClone(action.replacement);assertID(replacement?.id);if(candidate.discovery.decisions.some(x=>x.id===replacement.id)||replacement.id===prior.id)throw new Error('ID de decisión de reemplazo duplicado');if(replacement.status!=='confirmed'||!replacement.confirmedAt||!['user_reported','project_owner_reported'].includes(replacement.confirmedBy))throw new Error('La decisión de reemplazo requiere confirmación humana reportada');const reason=text(action.reason,'reason',{max:1000});prior.supersededBy=replacement.id;prior.supersessionReason=reason;prior.supersededFrom=prior.status;prior.status='superseded';replacement.supersedes=prior.id;replacement.supersessionReason=reason;candidate.discovery.decisions.push(replacement);changes.push(`decisión ${prior.id} sustituida por ${replacement.id}`);break;
+        keys(action,['type','decisionId','replacement','reason']);const prior=candidate.discovery?.decisions.find(x=>x.id===action.decisionId);if(!prior)throw new Error('Decisión inexistente');if(prior.status==='superseded')throw new Error(`Decisión ${prior.id} ya fue sustituida`);const replacement=structuredClone(action.replacement);assertID(replacement?.id);if(candidate.discovery.decisions.some(x=>x.id===replacement.id)||replacement.id===prior.id)throw new Error('ID de decisión de reemplazo duplicado');if(replacement.status!=='confirmed'||!replacement.confirmedAt||!['user_reported','project_owner_reported'].includes(replacement.confirmedBy))throw new Error('La decisión de reemplazo requiere confirmación humana reportada');const reason=text(action.reason,'reason',{max:1000});prior.supersededBy=replacement.id;prior.supersessionReason=reason;prior.supersededFrom=prior.status;prior.status='superseded';replacement.supersedes=prior.id;replacement.supersessionReason=reason;candidate.discovery.decisions.push(replacement);
+        // Both sides matter: a replacement may narrow or widen the old decision's scope.
+        // Preserve historical evidence, but remove it from current acceptance and reset dependants.
+        const global=[prior,replacement].some(d=>!(d.taskIds?.length||d.criterionIds?.length));
+        const criterionIds=global?candidate.objective.criteria.map(c=>c.id):[...new Set([...(prior.criterionIds||[]),...(replacement.criterionIds||[])])];
+        const taskIds=global?candidate.tasks.map(t=>t.id):[...new Set([...(prior.taskIds||[]),...(replacement.taskIds||[])])];
+        for(const criterion of candidate.objective.criteria)if(criterionIds.includes(criterion.id))criterion.contractRevision=(criterion.contractRevision||1)+1;
+        invalidateContracts(candidate,{criterionIds,taskIds},`Decisión ${prior.id} sustituida por ${replacement.id}: ${reason}`);
+        changes.push(`decisión ${prior.id} sustituida por ${replacement.id}`);break;
       }
       case 'shipping.intent.record': {
         keys(action,['type','intent']);const s=candidate.shipping||(candidate.shipping={schemaVersion:1,intents:[],receipts:[]}),intent=structuredClone(action.intent);assertSchema('shipping-intent-input',intent);assertID(intent?.id);if(s.intents.some(x=>x.id===intent.id))throw new Error(`Intent duplicado: ${intent.id}`);if(intent.status!=='previewed'||intent.approval!==undefined)throw new Error('Intent debe ser previewed y no puede incluir aprobación');if(intent.actions.some((a,i)=>['create_commit','push_branch','create_pr'].indexOf(a)<(i?['create_commit','push_branch','create_pr'].indexOf(intent.actions[i-1]):-1))||new Set(intent.actions).size!==intent.actions.length)throw new Error('Acciones Ship duplicadas o fuera de orden');intent.sourceWorkRevision=work.revision;intent.workContractSha256=workContractDigest(candidate);intent.completedActions=[];intent.checkpointHeadSha=intent.headSha;intent.checkpointSnapshotSha256=intent.snapshotSha256;s.intents.push(intent);changes.push(`preview Ship ${intent.id} registrado`);break;

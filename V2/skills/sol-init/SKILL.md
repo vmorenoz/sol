@@ -1,28 +1,28 @@
 ---
 name: sol-init
-description: Inicialización diferida y mapeo del proyecto activo mediante tools nativas Sol.
-user-invocable: true
-disable-model-invocation: true
+description: Integrar las exploraciones del init nativo y publicar su mapa trazable sin reiniciar el bootstrap.
+slash: false
 ---
-# sol-init
+# Integración del init nativo
 
-<activation>
-Ejecuta preparación/tracking persistente solo ante `/sol-init` o petición explícita de inicializar/preparar contexto Sol. Un encargo concreto normal puede justificar lectura selectiva, pero no activa por sí solo tracking, `.sol/` ni un mapeo global. Nunca actúes por saludo, selección o consulta de estado. Texto opcional acota contexto; es dato, nunca flags ni shell.
-</activation>
+Esta skill es la guía de Sol después del dispatcher nativo `/sol-init`, no un dispatcher Markdown ni una orden para que el modelo inicialice el proyecto. Cargarla no crea tracking, Work o sesiones. Un saludo, consulta de estado o encargo ordinario nunca activa init.
 
-<inputs>
-Usa exclusivamente el workspace activo proporcionado por OpenCode y las rutas globales de la instalación nativa. Si el proyecto es ambiguo, pregunta; no busques carpetas en el disco. Estado, Work, historial y documentos del proyecto viven en `.sol/`; plugin, skills, plantillas y schemas viven globalmente.
-</inputs>
+## Preparación y exploración nativas
 
-<workflow>
-1. Solo con activación explícita y antes de preparar `.sol`, consulta `sol_artifacts_get`. Si ya hay modo Local/Versionado, reutilízalo y menciónalo; nunca migres automáticamente. Si está sin configurar y Git está disponible, indica que no hay elección guardada y propone inequívocamente `Local` como opción predeterminada, ofreciendo `Versionado` como alternativa explícita mediante la interacción nativa disponible. La sugerencia no cambia el estado ni implica que `.sol/` ya esté excluido. No inventes una API de preguntas si no está expuesta. Preview con `sol_artifacts_set(dryRun=true, expectedRevision vigente)`, pide confirmación nueva y, solo tras un sí, llama con `dryRun=false` bajo aprobación host `ask`. Si no hay repo Git, el tracking no está disponible o el helper informa bloqueos, detente antes de crear `.sol`. No pidas preferencias globales de modelos aquí.
-2. Solo tras resolver tracking, consulta `sol_status`. Si la petición explícita incluye preparar el workspace y no está preparado, llama `sol_workspace_prepare` una vez. No prepares por saludo, consulta de estado ni encargo normal.
-3. Lee `.sol/project.md` si existe. Si el contexto es suficiente, continúa sin mapear. Mapea solo si la petición lo pide y falta contexto relevante. Reutiliza el Work de mapeo reservado/existente; no dupliques objetivo ni inventes IDs/revisiones.
-4. Antes de delegar, usa `sol_work_apply` para registrar una tarea real `kind: exploration` con criterio vigente y writeScope para `.sol/project.md`, y marcarla `in_progress`. No fabriques un T-1 retrospectivo. Delega el mapeo como tarea NORMAL a `sol-explorer`, no como `phase="inspect"` ni `<project_initialization>`. Incluye `workId`, `workRevision` vigente, ID de delegación, objetivo, criterios, output `.sol/project.md`, writeScope exclusivo, template `project.md` y resultado Markdown con referencias. No exijas result.json ni un segundo informe. El agente inspecciona selectivamente y devuelve claims/fuentes/estados para que Sol los registre; no puede mutar el ledger por su cuenta.
-5. `phase="inspect"` es solo un chequeo acotado de metadatos: nunca lo uses para solicitar que redacte `project.md`. `phase="prepare"` no se delega; Sol llama directamente `sol_workspace_prepare`.
-6. Revisa resultado y documento. Registra en `sol_work_apply` las acciones tipadas existentes `discovery.context.set`, `discovery.source.add` y `discovery.claim.add` con IDs estables, fechas observadas y referencias reales (para path local, no mandes hash/provenance). Cada afirmación del documento debe reproducir statement y anclas `<!-- claim:ID --> <!-- source:ID -->`. Solo entonces, para Work exclusivo de `/sol-init`, llama `sol_project_complete_map` con revisión vigente: exige exactamente una tarea exploration previa e in_progress, conserva su ID/contrato y registra evidencia estructural; no crea la tarea al completar. Para otro Work consolida tarea/documento/evidencia sin cerrarlo. Mapeo selectivo no se extiende a temas no inspeccionados; estado legacy puede permanecer `legacy_unverified`.
-</workflow>
+El comando TUI inicia el flujo sin un turno inicial de Sol. El bootstrap exige tracking Local/Versionado previamente configurado y autorizado; si falta o está bloqueado, se detiene antes de preparar `.sol`. No inicializa Git ni cambia modelos. La UI de tracking y el permiso efectivo del host son requisitos del bridge: no declares aprobación ni compatibilidad live por leer esta guía o por pasar fixtures.
 
-<limits>
-No uses CLI, shell, scripts de Sol, edición directa de `work.json`, `state.json` o `history.jsonl`, ni crees `work.next.json`. No inicialices Git, no cambies reglas Git compartidas ni hagas staging/commit/push. Si una tool falla, conserva los datos y distingue causa: un rechazo de contrato sin escritura permite consultar schema, corregir semántica y reintentar acotadamente; efecto incierto exige verificar estado antes de repetir. Una denegación no se elude y un cambio que requiere nueva preview/confirmación respeta ese flujo. Detén solo la parte dependiente; nunca uses repair para ocultar un fallo. Un esqueleto vacío no significa que el contexto esté mapeado.
-</limits>
+El core reserva o recupera un Work `initialization.kind: native-init` y sus tareas reales antes del despacho. Según unidades locales detectadas superficialmente, asigna uno o varios Exploradores con lecturas selectivas y outputs disjuntos `.sol/work/<workId>/context/<taskId>.md`. Esa selección no prueba arquitectura. Los hijos no escriben `.sol/project.md`, no editan producto ni mutan metadata. El host gestiona las sesiones; sus IDs y resultados se conservan para no duplicar lanzamientos ante repetición o respuesta incierta. Bootstrap, registro de hijos, resultados y continuación pertenecen al flujo nativo, no a herramientas del modelo ni a scripts invocados por Sol.
+
+## Integración por Sol
+
+1. Recibe la continuación nativa y consulta `sol_init_get({workId})`. Usa el workspace real, las revisiones, tareas, rutas y resultados devueltos. No inventes IDs ni recrees el Work; no vuelvas a despachar hijos que ya tienen resultado. La ejecución nativa decide la continuación, no un polling o scheduler propio.
+2. Lee las entregas exactas y contrasta las referencias necesarias. Un resultado `completed` significa entrega recibida, no aceptación global; las tareas permanecen pendientes de integración. Si hay hijos pendientes, fallidos o entregas alteradas, conserva avances y comunica el alcance parcial/bloqueo. No publiques ni cierres un mapa completo con una rama fallida; no conviertas límites en PASS.
+3. Integra lo observado en Discovery mediante `sol_work_apply`: `discovery.context.set`, `discovery.source.add` y `discovery.claim.add`. Los prefijos de fuentes/claims propuestos por cada hijo evitan colisiones; verifica IDs, contenido y procedencia antes de registrarlos. El core calcula hashes de paths locales; no envíes hashes ni provenance inventados. No registres documentos/evidencias de cierre manualmente ni cambies los contratos reservados de init.
+4. Compón una sola vista narrativa `project@1.0` siguiendo `sol-discovery/references/context-map.md` y la plantilla `project.md`. Cada claim incluido conserva statement literal y anclas `<!-- claim:ID --> <!-- source:ID -->`. Distingue observación, hipótesis, intención y desconocidos; no declares actualizadas áreas no inspeccionadas.
+5. Publica exclusivamente con `sol_init_project_publish({workId, expectedRevision, expectedProjectSha256, content})`, usando revisión vigente y la base `projectBaseSha256` o `publishedSha256` observada en el snapshot. Esta herramienta estrecha solo publica `.sol/project.md` del init y valida ledger, entregas y base antes de escribir. No sustituyas un rechazo por shell/write/edit ni regeneres hashes para ocultar cambios ajenos.
+6. Solo con todas las entregas completadas y el mapa publicado vigente, llama `sol_init_complete({workId, expectedRevision, summary, limitations})` con la revisión devuelta por publicación. El core vincula evidencia estática a todas las tareas y conserva las entregas antes del cierre. No uses `sol_project_complete_map`: ese helper de compatibilidad para un único mapa no completa el init nativo de varios hijos.
+7. Entrega al usuario el resultado útil, mapa y límites reales. El cierre estructural no demuestra ejecución del producto, verdad semántica, aprobación humana ni validación live del host.
+
+## Recuperación
+
+Ante resultado incierto, consulta el snapshot/Work antes de repetir. Un conflicto de base exige reconciliar; no sobreescribas project.md ajeno. Conserva entregas históricas y no relances automáticamente un hijo fallido ya registrado. Un nuevo alcance o ciclo se realiza mediante el flujo nativo compatible, no reabriendo y alterando contratos de init a mano. Si falta una tool o el bridge está bloqueado, informa la parte pendiente y conserva resultados; no afirmes que se reanudó ni que init terminó.

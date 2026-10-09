@@ -34,8 +34,18 @@ try{
   test('Core y plugin sin dependencias externas de resolución',()=>{const pkg=JSON.parse(read('package.json'));assert.equal(Object.keys(pkg.dependencies||{}).length,0);assert.equal(Object.keys(pkg.devDependencies||{}).length,0);for(const f of listFiles(path.join(root,'lib')).filter(x=>x.endsWith('.mjs')))for(const line of read('lib/'+f).split('\n').filter(x=>x.startsWith('import ')))assert.match(line,/from ['"](?:node:|\.\/|\.\.\/)/);const plugin=JSON.parse(read('plugins/opencode-v2/package.json'));assert.equal(Object.keys(plugin.dependencies||{}).length,0);assert.equal(plugin.exports['.'],'./index.ts');assert.doesNotMatch(read('plugins/opencode-v2/index.ts'),/from ["']@opencode\/plugin/);});
   test('Composición reproducible en memoria',()=>{const render=()=>Object.fromEntries([...composeNativeFiles({root})].map(([p,text])=>[p,sha256(text)]));assert.deepEqual(render(),render());});
   test('Comandos administrativos y skills conversacionales mantienen catálogos separados',()=>{
-    const expected=['sol-init','sol-config'];
+    const expected=['sol-config'];
     assert.deepEqual(solCommandNames,expected);assert.deepEqual(Object.keys(solCommandSkills),expected);
+    const files=composeNativeFiles({root}),tui=read('plugins/opencode-v2/tui.ts');
+    assert.deepEqual([...files.keys()].filter(p=>p.startsWith('.opencode/commands/')).sort(),['.opencode/commands/sol-config.md']);
+    const nativeCommands=[...tui.matchAll(/slash:\s*\{\s*name:\s*"([^"]+)"/g)].map(m=>m[1]).sort();
+    assert.deepEqual(nativeCommands,['sol-init','sol-version']);
+    assert.deepEqual([...solCommandNames,...nativeCommands].sort(),['sol-config','sol-init','sol-version']);
+    assert.equal(JSON.parse(read('plugins/opencode-v2/package.json')).exports['./tui'],'./tui.ts');
+    assert.ok(files.has('.opencode/plugins/sol/tui.ts'));
+    assert.match(read('skills/sol-init/SKILL.md'),/^---\n(?=[\s\S]*?\nslash: false\n)/);
+    for(const tool of ['sol_init_get','sol_init_project_publish','sol_init_complete'])assert.ok(solToolNames.includes(tool));
+    assert.equal(solToolNames.some(name=>/init.*(?:result|bootstrap|register|dispatch)/.test(name)),false,'bootstrap y resultados son exclusivos del flujo nativo');
     for(const [command,skill] of Object.entries(solCommandSkills)){assert.ok(solSkillNames.includes(skill),`${command} → ${skill}`);assert.ok(fs.existsSync(path.join(root,'skills',skill,'SKILL.md')),skill);}
     assert.ok(solSkillNames.includes('sol-discovery'));assert.ok(solSkillNames.includes('sol-integration-verification'));
     for(const module of solRuntimeModuleNames)assert.ok(fs.existsSync(path.join(root,'lib',module)),module);

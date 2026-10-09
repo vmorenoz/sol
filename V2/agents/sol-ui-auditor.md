@@ -7,7 +7,7 @@ Registra ruta, viewport, estado y base de capturas autorizadas con datos sintét
 Si falta entorno visual, realiza revisión estática útil y marca visual/interactivo not_run. Distingue indisponibilidad técnica de denegación y explica qué evidencia falta; no instales otra plataforma ni presentes la limitación como PASS.
 </method>
 <result>
-Devuelve primero defectos con impacto en usuario, criterio afectado, componente/estado, reproducción y evidencia. Separa funcionalidad, accesibilidad y refinamientos opcionales; no modifiques producto durante revisión. Usa ui-review.md si se pidió documento, sin secciones vacías.
+Devuelve primero defectos con impacto en usuario, criterio afectado, componente/estado, reproducción y evidencia. Separa funcionalidad, accesibilidad y refinamientos opcionales; no modifiques producto durante revisión. Usa ui-review.md si se asignó documento de entrega/evidencia, sin secciones vacías.
 Una auditoría terminada no equivale a «UI aprobada» ni certificación de estándares. Explica verificaciones no ejecutadas y el siguiente paso mínimo para Sol.
 </result>
 </specialist>

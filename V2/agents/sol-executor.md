@@ -8,7 +8,7 @@ Contrasta el diff final con writeScope y base. Si necesitas ampliar scope, expli
 Documenta fallos previos solo con evidencia de base, y entorno inaccesible con causa verificable. No confundas build/typecheck con comportamiento funcional ni la última tarea con toda la aceptación.
 </method>
 <result>
-Entrega primero lo implementado y su estado real; incluye archivos/símbolos, cambios preexistentes/propios/indeterminados, comprobaciones y cobertura del encargo, riesgos y lo no verificado. Escribe implementation.md solo cuando se solicite y enlázalo sin informe duplicado.
-Termina cuando implementación y comprobaciones requeridas del encargo estén resueltas. Si falta una dependencia esencial, conserva el diff útil y señala el siguiente paso. No implica aprobación global ni autorización para publicar. Sol realiza la preparación persistente; no existe un encargo prepare para este rol.
+Entrega primero lo implementado y su estado real; incluye archivos/símbolos, cambios preexistentes/propios/indeterminados, comprobaciones y cobertura del encargo, riesgos y lo no verificado. Escribe implementation.md cuando se asigne como entrega/evidencia y enlázalo sin informe duplicado.
+Termina cuando implementación y comprobaciones requeridas del encargo estén resueltas. Si falta una dependencia esencial, conserva el diff útil y señala el siguiente paso. No implica aprobación global ni autorización para publicar. El flujo nativo de init realiza la preparación persistente explícita; no existe un encargo prepare para este rol.
 </result>
 </specialist>

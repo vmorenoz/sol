@@ -1,7 +1,7 @@
 /** Synchronous file helpers. No agent sessions, queue, scheduler, timers or runtime state. */
 import fs from 'node:fs';
 import {assertSchema} from './schema.mjs';
-import {bindEvidence,deriveWorkReadiness,evidenceBindingsCurrent,workContractDigest} from './contracts.mjs';
+import {bindEvidence,deriveTaskReadiness,deriveWorkReadiness,evidenceBindingsCurrent,workContractDigest} from './contracts.mjs';
 export {bindEvidence,compareShippingSnapshot,criterionContract,deriveTaskReadiness,deriveWorkReadiness,taskContract,workContractDigest} from './contracts.mjs';
 import {safePath,exists,readJSON,readText,writeJSON,atomicWrite,assertID,now,fingerprint} from './fs.mjs';
 const terminal = status => ['done','cancelled'].includes(status);
@@ -137,10 +137,11 @@ function putSummary(root,w,focus=false){
   s.revision++;s.updatedAt=now();writeJSON(root,'.sol/state.json',assertSchema('state',s));return s;
 }
 export function syncWork(root,id,{focus=false}={}) {const w=readWork(root,id,{files:false});if(w.closure)recordClosure(root,w);putSummary(root,w,focus);return w;}
-export function createWork(root,{id,title,objective,criterion,verification,priority='normal'}) {
+export function createWork(root,{id,title,objective,criterion,verification,priority='normal',initialization,tasks=[]}) {
   assertID(id);if(exists(root,wp(id)))throw new Error(`Trabajo ya existe: ${id}`);
   status(root);history(root);const ts=now();
   const w={schemaVersion:1,id,revision:1,cycle:1,title,objective:{id:'OBJ-1',outcome:objective,criteria:[{id:'AC-1',description:criterion,verification,contractRevision:1,evidenceIds:[]}]},status:'pending',priority,createdAt:ts,updatedAt:ts,summary:'Trabajo creado; alcance pendiente de revisión.',blockers:[],decisionsPending:[],nextAction:'Revisar contexto y criterio de aceptación',documents:[],tasks:[],evidence:[],discovery:{schemaVersion:1,contextLane:'unknown',sources:[],claims:[],assumptions:[],questions:[],decisions:[]},shipping:{schemaVersion:1,intents:[],receipts:[]},closure:null};
+  if(initialization!==undefined){w.initialization=structuredClone(initialization);w.tasks=structuredClone(tasks);w.status='in_progress';w.summary='Exploración nativa inicial reservada';w.nextAction='Esperar resultados de las exploraciones registradas';}
   validateWork(root,w);writeJSON(root,wp(id),w);putSummary(root,w,true);return w;
 }
 export function recordContextSource(root,source){
@@ -162,8 +163,8 @@ export function recordContextSource(root,source){
   return item;
 }
 
-function validateContextMap(root,w,document='.sol/project.md'){
-  const discovery=w.discovery,content=readText(root,document),sources=new Map((discovery?.sources||[]).map(s=>[s.id,s]));
+export function validateContextMap(root,w,document='.sol/project.md',options={}){
+  const discovery=w.discovery,content=options.content??readText(root,document),sources=new Map((discovery?.sources||[]).map(s=>[s.id,s]));
   if(!discovery||!['existing-project','project-in-existing-repo','greenfield'].includes(discovery.contextLane))
     throw new Error('Mapeo incompleto: registre contextLane explícito (existing-project, project-in-existing-repo o greenfield).');
   const claims=(discovery.claims||[]).filter(c=>content.includes(`<!-- claim:${c.id} -->`));
@@ -265,10 +266,14 @@ export function saveShippingMetadata(root,candidate,expectedRevision){
   const saved=structuredClone(candidate);saved.revision++;saved.updatedAt=now();validateWork(root,saved);
   writeJSON(root,wp(saved.id),saved);putSummary(root,saved);return saved;
 }
-function assertCompletion(root,w,{fresh=true}={}){
+export function assertCompletion(root,w,{fresh=true}={}){
   const readiness=deriveWorkReadiness(w),researchOnly=w.tasks.length>0&&w.tasks.every(t=>['research','exploration','specification','planning'].includes(t.kind));
   if(w.blockers.length||w.decisionsPending.length&&!researchOnly)throw new Error('Trabajo con bloqueos o decisiones pendientes');
   if(w.tasks.some(t=>!terminal(t.status)))throw new Error('Hay tareas abiertas');
+  for(const task of w.tasks.filter(t=>t.status==='done')){
+    const taskReadiness=deriveTaskReadiness(w,task.id);
+    if(!taskReadiness.ready)throw new Error(`Tarea ${task.id} sin prerrequisitos vigentes: ${taskReadiness.reasons.join('; ')}`);
+  }
   if(!readiness.completionReady)throw new Error(`Trabajo no listo para completar: ${readiness.completionReasons.join('; ')}`);
   const ev=new Map(w.evidence.map(e=>[e.id,e]));const used=new Set();
   const covering=(ids,predicate,label)=>{if(ids.some(id=>ev.get(id)?.status!=='pass'))throw new Error(`Aceptación contiene evidencia no positiva: ${label}`);const es=ids.map(id=>ev.get(id)).filter(e=>e&&e.status==='pass'&&e.kind!=='not_run'&&predicate(e)&&evidenceBindingsCurrent(w,e));if(!es.length)throw new Error(`Falta evidencia positiva vinculada al contrato vigente: ${label}`);for(const e of es){if(fresh)checkFresh(root,e);used.add(e.id);}};

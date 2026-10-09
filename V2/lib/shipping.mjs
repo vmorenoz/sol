@@ -22,11 +22,11 @@ function bad(reason){return {ready:false,reasons:[reason]};}
 export function computeShippingSnapshot({gitSnapshot,work,request,workScope,expectedPaths,evidenceIds,includedCommitShas}={}){
   if(!gitSnapshot||!work||!request)throw new TypeError('gitSnapshot, work y request son requeridos');
   const expected=new Set(request.expectedPaths||[]);
-  const files=(gitSnapshot.files||[]).filter(f=>!bookkeeping(work.id).has(f.path)&&(expected.has(f.path)||f.staged||f.unstaged||f.untracked)).map(f=>({path:f.path,sha256:f.sha256,staged:!!f.staged,unstaged:!!f.unstaged,untracked:!!f.untracked,ignored:!!f.ignored})).sort((a,b)=>a.path.localeCompare(b.path));
-  const contentSha256=sha(stable(files.map(({path,sha256})=>({path,sha256}))));
+  const files=(gitSnapshot.files||[]).filter(f=>!bookkeeping(work.id).has(f.path)&&(expected.has(f.path)||f.staged||f.unstaged||f.untracked)).map(f=>({path:f.path,sha256:f.sha256,deleted:!!f.deleted,staged:!!f.staged,unstaged:!!f.unstaged,untracked:!!f.untracked,ignored:!!f.ignored})).sort((a,b)=>a.path.localeCompare(b.path));
+  const contentSha256=sha(stable(files.map(({path,sha256,deleted})=>({path,sha256,deleted}))));
   const diffSha256=gitSnapshot.diffSha256;
   const included=sortUnique(includedCommitShas||[]);
-  const relevant={repository:gitSnapshot.repository,remote:gitSnapshot.remote,branch:gitSnapshot.branch,base:gitSnapshot.base,baseSha:gitSnapshot.baseSha,headSha:gitSnapshot.headSha,diffSha256,contentSha256,files,stagedPaths:sortUnique(files.filter(f=>f.staged).map(f=>f.path)),unstagedPaths:sortUnique(files.filter(f=>f.unstaged).map(f=>f.path)),untrackedPaths:sortUnique(files.filter(f=>f.untracked).map(f=>f.path)),includedCommitShas:included,workContractSha256:workContractDigest(work),title:request.title,body:request.body,commitMessage:request.commitMessage,actions:request.actions,workScope:sortUnique(workScope||[]),expectedPaths:sortUnique(expectedPaths||[]),evidenceIds:sortUnique(evidenceIds||[])};
+  const relevant={repository:gitSnapshot.repository,remote:gitSnapshot.remote,branch:gitSnapshot.branch,base:gitSnapshot.base,baseSha:gitSnapshot.baseSha,publishedHeadSha:gitSnapshot.publishedHeadSha||null,headSha:gitSnapshot.headSha,diffSha256,contentSha256,files,stagedPaths:sortUnique(files.filter(f=>f.staged).map(f=>f.path)),unstagedPaths:sortUnique(files.filter(f=>f.unstaged).map(f=>f.path)),untrackedPaths:sortUnique(files.filter(f=>f.untracked).map(f=>f.path)),includedCommitShas:included,workContractSha256:workContractDigest(work),title:request.title,body:request.body,commitMessage:request.commitMessage,actions:request.actions,workScope:sortUnique(workScope||[]),expectedPaths:sortUnique(expectedPaths||[]),evidenceIds:sortUnique(evidenceIds||[])};
   return {...relevant,snapshotSha256:sha(stable(relevant))};
 }
 
@@ -78,7 +78,7 @@ function validateSnapshot(g,request,blockers){
   if(request.actions?.includes('create_pr')&&(!g?.headRepository||g.headRepository!==request.repository))blockers.push('Pull request entre repositorios/fork o head remoto no resuelto: no se puede construir un --head inequívoco.');
   if(!Array.isArray(g?.files))blockers.push('Snapshot debe enumerar todos los archivos afectados.');
   else for(const f of g.files){if(!f||typeof f!=='object'||!cleanPath(f.path)||!HASH.test(f.sha256||''))blockers.push(`Path/hash Git inválido: ${String(f?.path).slice(0,120)}.`);}
-  if(!Array.isArray(g?.localCommits))blockers.push('No se observó la lista completa de commits locales pendientes.');
+  if(!Array.isArray(g?.localCommits))blockers.push('No se observó la lista completa de commits incluidos respecto de la base.');
 }
 
 export function buildShippingPreflight({work,expectedRevision,gitSnapshot,request}={}){
@@ -94,7 +94,7 @@ export function buildShippingPreflight({work,expectedRevision,gitSnapshot,reques
   if(!request||typeof request!=='object')blockers.push('Solicitud explícita ausente.');
   const req=request||{};
   const actions=req.actions;
-  if(!Array.isArray(actions)||!actions.length||actions.some((a,i)=>!ACTIONS.includes(a)||actions.indexOf(a)!==i)||actions.some((a,i)=>ACTIONS.indexOf(a)!==i))blockers.push('actions debe ser una secuencia única y ordenada de acciones shipping permitidas.');
+  if(!Array.isArray(actions)||!actions.length||actions.some((a,i)=>!ACTIONS.includes(a)||actions.indexOf(a)!==i)||actions.some((a,i)=>i>0&&ACTIONS.indexOf(a)<=ACTIONS.indexOf(actions[i-1])))blockers.push('actions debe ser una secuencia única y ordenada de acciones shipping permitidas.');
   for(const key of ['repository','remote','branch','base','title','commitMessage'])if(typeof req[key]!=='string'||!req[key].trim())blockers.push(`Solicitud sin ${key} explícito.`);
   if(typeof req.body!=='string')blockers.push('Solicitud sin body explícito (puede ser cadena vacía).');
   if(req.repository&&!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(req.repository))blockers.push('repository debe ser owner/repo explícito, sin URL ni credenciales.');
@@ -108,7 +108,7 @@ export function buildShippingPreflight({work,expectedRevision,gitSnapshot,reques
   if(scope.length>100)blockers.push('writeScope excede el límite del contrato.');
   for(const p of scope)if(!cleanPath(p))blockers.push(`writeScope inseguro o no normalizado: ${String(p).slice(0,120)}.`);
   const expected=req.expectedPaths;
-  if(!Array.isArray(expected)||!expected.length||expected.length>500||expected.some(p=>!cleanPath(p))||new Set(expected).size!==expected.length)blockers.push('expectedPaths debe enumerar explícitamente hasta 500 paths únicos, relativos y normalizados.');
+  if(!Array.isArray(expected)||(actions?.includes('create_commit')&&!expected.length)||expected.length>500||expected.some(p=>!cleanPath(p))||new Set(expected).size!==expected.length)blockers.push('expectedPaths debe enumerar explícitamente hasta 500 paths únicos, relativos y normalizados; create_commit requiere al menos uno.');
   const expectedPaths=Array.isArray(expected)?sortUnique(expected):[];
   for(const p of expectedPaths)if(!scope.some(s=>cleanPath(s)&&inScope(p,s)))blockers.push(`Path fuera del writeScope: ${p}.`);
   const bookkeepingPaths=bookkeeping(workId||'');
@@ -117,8 +117,12 @@ export function buildShippingPreflight({work,expectedRevision,gitSnapshot,reques
   const files=Array.isArray(gitSnapshot?.files)?gitSnapshot.files:[];
   if(new Set(files.map(f=>f?.path)).size!==files.length)blockers.push('Snapshot Git contiene paths duplicados.');
   const changed=sortUnique(files.filter(f=>f&&(f.staged||f.unstaged||f.untracked)).filter(f=>!bookkeepingPaths.has(f.path)).map(f=>f.path));
+  if(actions?.includes('push_branch')&&changed.length&&!actions.includes('create_commit'))blockers.push('Push con cambios locales pendientes requiere create_commit; el push no publica los bytes sin commit de la preview.');
   if(actions?.includes('create_pr')&&changed.length&&(!actions.includes('create_commit')||!actions.includes('push_branch')))blockers.push('PR con cambios locales requiere secuencia explícita create_commit→push_branch→create_pr.');
-  if(actions?.includes('create_pr')&&(gitSnapshot?.localCommits||[]).length&&!actions.includes('push_branch'))blockers.push('PR con commits locales no publicados requiere push_branch antes de create_pr.');
+  if(actions?.includes('create_pr')&&(gitSnapshot?.localCommits||[]).length&&!actions.includes('push_branch')){
+    if(!HEX.test(gitSnapshot?.publishedHeadSha||'')||!Array.isArray(gitSnapshot?.unpublishedCommitShas))blockers.push('Publicación de la rama desconocida: falta una referencia remota local observada; refresque explícitamente esa referencia antes de solicitar solo create_pr. No se ejecutó fetch.');
+    else if(gitSnapshot.unpublishedCommitShas.length)blockers.push('La referencia remota local observada todavía no contiene todos los commits: requiere push_branch antes de create_pr.');
+  }
   if(stable(changed)!==stable(expectedPaths))blockers.push('expectedPaths no coincide exactamente con los paths staged/unstaged/untracked observados (excluido bookkeeping local reconocido).');
   for(const f of files)if(f&&(f.staged||f.unstaged||f.untracked)&&!bookkeepingPaths.has(f.path)&&!expectedPaths.includes(f.path))blockers.push(`Cambio fuera del alcance aprobado: ${f.path}.`);
   for(const f of files)if(f?.staged&&bookkeepingPaths.has(f.path))blockers.push(`Bookkeeping Sol staged requiere resolución separada: ${f.path}.`);
@@ -126,7 +130,7 @@ export function buildShippingPreflight({work,expectedRevision,gitSnapshot,reques
   if(new Set(local).size!==local.length)blockers.push('Snapshot contiene commits locales duplicados.');
   if(local.some(s=>!HEX.test(s||'')))blockers.push('Lista de commits locales contiene SHA inválido.');
   const included=req.includedCommitShas;
-  if(!Array.isArray(included)||new Set(included).size!==included.length||included.some(s=>!HEX.test(s||''))||stable(sortUnique(included))!==stable(sortUnique(local)))blockers.push('includedCommitShas debe declarar exactamente todos los commits locales no publicados observados.');
+  if(!Array.isArray(included)||new Set(included).size!==included.length||included.some(s=>!HEX.test(s||''))||stable(sortUnique(included))!==stable(sortUnique(local)))blockers.push('includedCommitShas debe declarar exactamente todos los commits observados respecto de la base.');
   for(const p of expectedPaths){const f=files.find(x=>x?.path===p);if(!f)blockers.push(`Path esperado no aparece en snapshot: ${p}.`);}
   for(const p of expectedPaths)if(files.find(f=>f?.path===p)?.ignored)blockers.push(`Path ignorado no se puede agregar sin force: ${p}.`);
   const evidenceIds=sortUnique([
@@ -140,6 +144,7 @@ export function buildShippingPreflight({work,expectedRevision,gitSnapshot,reques
   if(intent){const snap=computeShippingSnapshot({gitSnapshot,work,request:req,workScope:scope,expectedPaths,evidenceIds,includedCommitShas:included});intent.contentSha256=snap.contentSha256;intent.snapshotSha256=snap.snapshotSha256;}
   const argvPreview=intent?actions.flatMap(a=>buildShippingArgv(intent,a,{preview:true})):[];
   const warnings=files.filter(f=>f&&bookkeepingPaths.has(f.path)&&(f.unstaged||f.untracked||f.ignored)).map(f=>`Bookkeeping Sol local fuera del contenido aprobado: ${f.path}.`);
+  if(gitSnapshot?.publishedHeadSha)warnings.push('Publicación contrastada solo con referencia remota local; no prueba el estado actual del servidor y no se ejecutó fetch.');
   return {schemaVersion:1,workId,expectedRevision,intent,blockers:[...new Set(blockers)],warnings:[...new Set(warnings)],argvPreview};
 }
 

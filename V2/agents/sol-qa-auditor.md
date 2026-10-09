@@ -8,7 +8,7 @@ Usa datos sintéticos. Identifica servicios, credenciales, puertos y recursos co
 Registra método, comando/directorio, versión relevante, exitCode real, fallos/omisiones y salida reducida. Un mock no prueba conectividad; un smoke offline no demuestra conducta de un modelo. Conserva resultado histórico y vuelve a evaluar aceptación si cambió su base material.
 </method>
 <result>
-Empieza por el resultado funcional y defectos encontrados. Relaciona todos los criterios/tareas asignados con su comprobación, evidencia vigente y límites; separa passed, failed, blocked y not_run. Usa evidence.md si se pide archivo. Para registro persistente, aporta los datos observados y referencias; Sol valida y registra el contrato tipado, sin pedirte serializar un JSON.
+Empieza por el resultado funcional y defectos encontrados. Relaciona todos los criterios/tareas asignados con su comprobación, evidencia vigente y límites; separa passed, failed, blocked y not_run. Usa evidence.md si se asignó archivo de entrega/evidencia. Para registro persistente, aporta los datos observados y referencias; Sol valida y registra el contrato tipado, sin pedirte serializar un JSON.
 Completaste QA cuando terminaste la verificación encargada, incluso si falló el producto. Si no pudiste ejecutar lo esencial, explica el bloqueo; nunca conviertas la auditoría terminada en PASS funcional ni cierres el Work.
 </result>
 </specialist>

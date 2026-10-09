@@ -56,32 +56,53 @@ export function observeShippingGit({sessionRoot,request,work}={}){
   const baseRef=`refs/remotes/${remote}/${base}`;
   const baseSha=text(workspace,['rev-parse','--verify',`${baseRef}^{commit}`]);
   if(!/^[a-f0-9]{40,64}$/.test(baseSha))throw new Error('Base remota local no resuelta; no se ejecuta fetch.');
+  const workspacePrefix=path.relative(gitRoot,workspace).split(path.sep).filter(Boolean).join('/');
+  // Porcelain v1 and diff path records are rooted at the Git top-level, even with a nested cwd.
+  const workspacePath=name=>{
+    if(workspacePrefix&&!name.startsWith(`${workspacePrefix}/`))throw new Error('Hay paths Git fuera del workspace de sesión.');
+    return workspacePrefix?name.slice(workspacePrefix.length+1):name;
+  };
   const status=decodeZ(git(workspace,['status','--porcelain=v1','-z','--untracked-files=all','--ignored=matching']));
-  const paths=new Map();
+  const paths=new Map(),ignoredDirectories=[];
   for(let i=0;i<status.length;i++){
     const record=status[i];
     if(record.length<4)throw new Error('Salida status Git truncada/malformada.');
-    const code=record.slice(0,2),name=record.slice(3);
+    const code=record.slice(0,2),rawName=record.slice(3);
+    if(code==='!!'&&workspacePrefix&&!rawName.startsWith(`${workspacePrefix}/`))continue;
+    const name=workspacePath(rawName);
+    // Ignored directory summaries are not changed files. Never enumerate/read their contents.
+    if(code==='!!'&&name.endsWith('/')){
+      const directory=name.slice(0,-1);if(!clean(directory))throw new Error('Directorio ignorado inseguro.');
+      ignoredDirectories.push(directory);continue;
+    }
+    if(code==='!!'&&!(request.expectedPaths||[]).includes(name))continue;
     if(code.includes('R')||code.includes('C')){if(!status[i+1])throw new Error('Renombre Git incompleto; snapshot bloqueado.');i++;}
     const previous=paths.get(name)||{path:name};
     previous.staged ||= code[0]!==' '&&code[0]!=='?'&&code[0]!=='!';
     previous.unstaged ||= code[1]!==' '&&code!=='??'&&code!=='!!';
     previous.untracked ||= code==='??';previous.ignored ||= code==='!!';paths.set(name,previous);
   }
-  const changed=decodeZ(git(workspace,['diff','--name-only','-z','HEAD']));
-  const workspacePrefix=path.relative(gitRoot,workspace).split(path.sep).filter(Boolean).join('/');
-  const committedPaths=decodeZ(git(gitRoot,['diff','--name-only','-z',`${baseSha}...HEAD`]));
-  const commitPaths=committedPaths.map(name=>{
-    if(workspacePrefix&&name!==workspacePrefix&&!name.startsWith(`${workspacePrefix}/`))throw new Error('Hay commits locales que incluyen paths fuera del workspace de sesión.');
-    return workspacePrefix?name.slice(workspacePrefix.length).replace(/^\//,''):name;
-  });
+  const changed=decodeZ(git(workspace,['diff','--name-only','-z','HEAD'])).map(workspacePath);
+  const commitPaths=decodeZ(git(gitRoot,['diff','--name-only','-z',`${baseSha}...HEAD`])).map(workspacePath);
+  const deletedPaths=new Set([
+    ...decodeZ(git(gitRoot,['diff','--name-only','--diff-filter=D','--no-renames','-z','HEAD'])),
+    ...decodeZ(git(gitRoot,['diff','--name-only','--diff-filter=D','--no-renames','-z',`${baseSha}...HEAD`]))
+  ].map(workspacePath));
+  const observeFile=name=>{
+    try{return {sha256:sha(fs.readFileSync(canonicalFile(workspace,name))),deleted:false};}
+    catch(error){
+      // Only a deletion actually observed in Git may have no file. Unknown/missing inputs fail closed.
+      if(error.code!=='ENOENT'||!deletedPaths.has(name))throw error;
+      return {sha256:sha(Buffer.from(`sol:git-deletion\0${name}`)),deleted:true};
+    }
+  };
   for(const name of [...paths.keys(),...changed,...commitPaths]){
     if(!clean(name)||SECRET.test(name))throw new Error('Path inseguro o potencialmente sensible observado; snapshot bloqueado.');
-    canonicalFile(workspace,name);
+    observeFile(name);
   }
   const files=[];
-  for(const name of request.expectedPaths||[])if(!paths.has(name))paths.set(name,{path:name,staged:false,unstaged:false,untracked:false,ignored:false});
-  for(const [name,flags] of paths){const full=canonicalFile(workspace,name);files.push({...flags,sha256:sha(fs.readFileSync(full))});}
+  for(const name of request.expectedPaths||[])if(!paths.has(name))paths.set(name,{path:name,staged:false,unstaged:false,untracked:false,ignored:ignoredDirectories.some(dir=>name.startsWith(`${dir}/`))});
+  for(const [name,flags] of paths)files.push({...flags,...observeFile(name)});
   const evidenceFiles=[];
   for(const evidence of work.evidence||[])for(const file of evidence.files||[]){
     if(!clean(file.path)||SECRET.test(file.path)){evidenceFiles.push({path:file.path,sha256:null});continue;}
@@ -89,10 +110,23 @@ export function observeShippingGit({sessionRoot,request,work}={}){
   }
   const localRaw=text(workspace,['rev-list','--reverse',`${baseSha}..HEAD`]);
   const localCommits=localRaw?localRaw.split('\n').filter(Boolean):[];
-  const diff=git(workspace,['diff','--binary','--no-ext-diff','--no-textconv',`${baseSha}...HEAD`]);
-  const workDiff=git(workspace,['diff','--binary','--no-ext-diff','--no-textconv','HEAD']);
+  // This is a local remote-tracking observation, not a network check or proof of current remote state.
+  const publicationRef=`refs/remotes/${remote}/${branch}`;
+  let publishedHeadSha=null,unpublishedCommitShas=null;
+  try{
+    publishedHeadSha=text(workspace,['rev-parse','--verify',`${publicationRef}^{commit}`]);
+    if(!/^[a-f0-9]{40,64}$/.test(publishedHeadSha))throw new Error('Ref inválida');
+    const pending=text(workspace,['rev-list','--reverse',`${publishedHeadSha}..HEAD`]);
+    unpublishedCommitShas=pending?pending.split('\n').filter(Boolean):[];
+  }catch{publishedHeadSha=null;unpublishedCommitShas=null;}
+
   const localBookkeeping=bookkeeping(work.id);
+  // Metadata persistence must not stale its own approval in versioned tracking mode.
+  // Keep every other path, including another Work's artifacts, in the content boundary.
+  const contentPaths=['--','.',...[...localBookkeeping].map(p=>`:(exclude,literal)${p}`)];
+  const diff=git(workspace,['diff','--binary','--no-ext-diff','--no-textconv',`${baseSha}...HEAD`,...contentPaths]);
+  const workDiff=git(workspace,['diff','--binary','--no-ext-diff','--no-textconv','HEAD',...contentPaths]);
   const untrackedDigest=files.filter(f=>f.untracked&&!localBookkeeping.has(f.path)).map(f=>[f.path,f.sha256]).sort();
   const diffSha256=sha(Buffer.concat([diff,Buffer.from([0]),workDiff,Buffer.from(JSON.stringify(untrackedDigest))]));
-  return {complete:true,filesComplete:true,rootVerified:true,pathSafetyVerified:true,targetResolved:true,observedAt:new Date().toISOString(),repository,headRepository,remote,branch,base,baseSha,headSha,detached:false,diffSha256,files,localCommits,evidenceFiles,evidenceFilesComplete:true,manualEvidenceVerified:[]};
+  return {complete:true,filesComplete:true,rootVerified:true,pathSafetyVerified:true,targetResolved:true,observedAt:new Date().toISOString(),repository,headRepository,remote,branch,base,baseSha,headSha,detached:false,diffSha256,files,localCommits,publicationRef,publishedHeadSha,unpublishedCommitShas,publicationObservation:'local_remote_tracking_ref_only',evidenceFiles,evidenceFilesComplete:true,manualEvidenceVerified:[]};
 }

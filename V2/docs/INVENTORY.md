@@ -37,7 +37,7 @@ Estos son agentes del **producto distribuido**. No son los agentes nativos de de
 
 ## Skills y comandos
 
-Los únicos comandos públicos de Sol son `/sol-init`, `/sol-config` y `/sol-version`. Init y config son dispatchers Markdown que cargan sus skills y requieren una petición explícita; version es diagnóstico nativo del plugin, sin inferencia. Init solicita preparación persistente y tracking, nunca configuración de modelos. Config administra preferencias de modelos y tracking mediante preview/confirmación; no inicializa el workspace.
+Los únicos comandos públicos de Sol son `/sol-init`, `/sol-config` y `/sol-version`. Init es un dispatcher TUI nativo que prepara y lanza Exploradores sin un turno inicial de Sol; config conserva su dispatcher Markdown. Ambos requieren petición explícita; version es diagnóstico nativo del plugin, sin inferencia. Init solicita preparación persistente y tracking, nunca configuración de modelos. Config administra preferencias de modelos y tracking mediante preview/confirmación; no inicializa el workspace.
 
 Las diez skills de workflow se conservan y Sol las carga con la herramienta nativa `skill` según intención, estado y autorización:
 - `sol-new-project` y `sol-onboard`: necesidad nueva y contexto existente
