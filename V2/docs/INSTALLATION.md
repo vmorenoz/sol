@@ -61,7 +61,7 @@ Antes de aplicar se cotejan las huellas previstas de recursos, configuración y 
 
 ## Saber qué versión se ejecuta
 
-La identidad central de esta distribución está en `release.json` (Sol 2.2.0). El instalador genera `.sol/release.json` y la identidad del manifest con un `buildHash` SHA-256 determinista sobre el payload canónico, sin timestamps ni rutas HOME; el manifest generado no entra en su propia huella. `baseCommit` identifica la base de desarrollo. `sourceCommit` permanece `null` cuando no existe un commit exacto de release verificado, y no se presenta la base como si contuviera los cambios actuales.
+La identidad central de esta distribución está en `release.json` (Sol 2.2.1). El instalador genera `.sol/release.json` y la identidad del manifest con un `buildHash` SHA-256 determinista sobre el payload canónico, sin timestamps ni rutas HOME; el manifest generado no entra en su propia huella. `baseCommit` identifica la base de desarrollo. `sourceCommit` permanece `null` cuando no existe un commit exacto de release verificado, y no se presenta la base como si contuviera los cambios actuales.
 
 - `node install.mjs --version` identifica la distribución que ejecuta ese comando y no instala nada.
 - `node version.mjs` desde `V2/`, o `node ~/.sol/version.mjs` después de instalar, muestra la identidad cargada por ese **proceso CLI** y la registrada en disco. No certifica el proceso OpenCode.

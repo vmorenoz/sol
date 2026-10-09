@@ -1,4 +1,4 @@
-# Sol 2.2.0 para OpenCode v2
+# Sol 2.2.1 para OpenCode v2
 
 Sol es un asistente de desarrollo que convierte encargos en trabajo coordinado y recuperable. Usa las herramientas de OpenCode para delegar a especialistas y conserva por workspace el objetivo, tareas, decisiones, bloqueos, evidencia y cierres. El código del proyecto sigue siendo la fuente de verdad: Sol organiza el trabajo y ayuda a verificarlo; no sustituye el juicio del usuario ni certifica automáticamente que un cambio sea correcto.
 
