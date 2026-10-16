@@ -5,6 +5,10 @@ export const sha256 = data => crypto.createHash('sha256').update(data).digest('h
 export const now = () => new Date().toISOString();
 export const idOK = id => typeof id==='string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(id);
 export function assertID(id) {if (!idOK(id)) throw new Error('Identificador inválido'); return id;}
+/** Convert a native filesystem-relative path to the portable slash form used by safePath. */
+export function portableRelative(root,target,pathAPI=path) {
+  return pathAPI.relative(root,target).split(pathAPI.sep).join('/');
+}
 /** Paths are relative to a trusted, explicit repository root. No globs or symlink traversal. */
 export function safePath(root,relative,{allowDot=false}={}) {
   if (typeof relative!=='string' || !relative || relative.includes('\0') || relative.includes('\\') || /[\x00-\x1f*?]/.test(relative) || path.posix.isAbsolute(relative) || /^[A-Za-z]:/.test(relative)) throw new Error(`Ruta relativa inválida: ${relative}`);
