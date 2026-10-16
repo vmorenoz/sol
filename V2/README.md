@@ -1,4 +1,4 @@
-# Sol 2.2.0 para OpenCode v2
+# Sol 2.2.1 para OpenCode v2
 
 Sol es un asistente de desarrollo que convierte encargos en trabajo coordinado y recuperable. Usa las herramientas de OpenCode para delegar a especialistas y conserva por workspace el objetivo, tareas, decisiones, bloqueos, evidencia y cierres. El código del proyecto sigue siendo la fuente de verdad: Sol organiza el trabajo y ayuda a verificarlo; no sustituye el juicio del usuario ni certifica automáticamente que un cambio sea correcto.
 
@@ -46,7 +46,7 @@ La herramienta Sol obtiene la raíz del contexto de sesión, no de texto que apo
 
 ## Qué hace y qué no
 
-Sol registra y consulta trabajo, coordina investigación/planificación/implementación/revisión con especialistas, y conserva continuidad por proyecto. El core valida esquemas y consistencia local, y puede comprobar si la evidencia registrada sigue vigente.
+Sol registra y consulta trabajo, coordina investigación/planificación/implementación/revisión con especialistas, y conserva continuidad por proyecto. Las skills auxiliares aportan prácticas técnicas selectivas; `sol-engineering-practices` carga referencias por tema, no añade agentes, permisos ni pipeline. El core valida esquemas y consistencia local, y puede comprobar si la evidencia registrada sigue vigente.
 
 Sol no es un runtime de agentes, daemon, scheduler, servidor MCP ni base de datos externa. No implementa el producto por sí mismo: la ejecución se delega a especialistas nativos según las instrucciones y permisos efectivos de OpenCode. `/sol-config` es la excepción administrativa explícita: solo cambia preferencias fijas de modelos de agentes Sol y tracking del workspace activo, con vista previa, confirmación interactiva nueva y aprobación del host. No cambia providers, credenciales, permisos, el modelo principal, overrides de sesión, ni aplica staging/commit/push. Las preferencias guardadas en `agents.<id>.model` de la configuración global OpenCode afectan asignaciones futuras; la selección de modelo ya activa en la sesión principal conserva precedencia. No hay escalado ni hot-switch automático. El instalador limpia selectivamente referencias legacy reconocidas y administra solo sus propias asignaciones obsoletas. No explora repositorios para descubrirlos ni migra formatos desconocidos. Una validación offline o un recibo no equivalen a aprobación live de OpenCode.
 

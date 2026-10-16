@@ -18,7 +18,7 @@ test('los nueve especialistas reciben preferencias, jerarquía y prohibición de
   for(const clause of [/instrucciones aplicables de AGENTS\.md/,/preferencias pertinentes del encargo dentro de su jerarquía/,/Comunica a Sol cualquier conflicto material/,/no cambies configuración, credenciales ni aprobaciones/])assert.match(prompt,clause,id);
  }
 });
-test('delegación expresa preferencias y contexto sin formato rígido',()=>{
+test('delegación expresa preferencias pertinentes dentro del contrato Markdown',()=>{
  const template=fs.readFileSync(path.join(root,'templates/delegation.md'),'utf8');
- for(const clause of [/template: delegation\.md@1\.0/,/Preferencias aplicables y origen/,/Fuentes concretas, acuerdos relevantes/,/Lecturas\/escrituras autorizadas/,/resultado comprobable/,/no hay encabezados obligatorios, parser/])assert.match(template,clause);
+ for(const clause of [/template: delegation\.md@1\.0/,/preferencias aplicables con su origen conocido/,/rutas\/fuentes.*hallazgos previos/,/Lecturas.*escrituras autorizadas por separado/,/Conducta observable/,/Usa estos encabezados y orden/])assert.match(template,clause);
 });

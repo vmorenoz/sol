@@ -1,6 +1,6 @@
 {
   "name": "sol",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "private": true,
   "description": "Tools sem\u00e1nticas y orquestaci\u00f3n nativa para OpenCode v2; core local, sin runtime propio.",
   "type": "module",

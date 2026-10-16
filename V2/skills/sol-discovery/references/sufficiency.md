@@ -2,6 +2,8 @@
 
 No uses una puntuación de ambigüedad ni un checklist universal. Da un juicio explicado para el próximo acto, no una certificación de entendimiento.
 
+En research, formula antes de empezar la pregunta investigable y qué resultado bastaría para el próximo paso. Divide en subpreguntas conforme a la evidencia; prioriza por cuánto cambiarían conclusión/decisión frente al coste de investigar. Cierra cuando las afirmaciones decisivas tienen soporte o quedan explícitamente desconocidas y el siguiente paso está claro; no persigas cobertura exhaustiva ni conviertas incógnitas humanas no bloqueantes en requisito de cierre.
+
 | Próximo acto | Basta cuando | Mantener abierto/bloquear cuando |
 |---|---|---|
 | Research | La pregunta investigable, fuente/ámbito y resultado útil están claros. Puede cerrar su propio AC con síntesis, procedencia y límites aunque queden decisiones humanas. | No hay fuente/permiso/acceso esencial para ese research. Registrar límites, no fingir respuesta. |

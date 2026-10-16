@@ -1,5 +1,7 @@
 # Triage de evidencia · sol-discovery refs@1
 
+El flujo de investigación completo está en [`research-method.md`](research-method.md); esta referencia se limita a clasificar procedencia, soporte y límites de las fuentes.
+
 ## Clasificar antes de sintetizar
 
 | Clase | Qué permite afirmar | No permite afirmar |
@@ -22,10 +24,10 @@ Registra como mínimo: afirmación concreta, class, source (ruta+s símbolo/lín
 
 ## Procedimiento
 
-1. Identifica la afirmación que realmente cambiaría la opción.
-2. Prefiere evidencia local/directa para estado del repo; documentación oficial versionada para APIs externas; respuesta del usuario para intención/preferencia.
-3. Lee la porción fuente necesaria. Comprueba fecha/versión/commit si existe. Contrasta solo si una discordancia puede cambiar la decisión.
-4. Registra en el informe/artefacto pertinente sin duplicar work/state. Una evidencia estática describe el checkout; no es ejecución.
-5. Si falta fuente/acceso, di qué intentaste, alcance de la búsqueda y qué permanece desconocido; propone una próxima investigación concreta.
+1. Identifica la afirmación que realmente cambiaría la conclusión y el próximo paso.
+2. Prefiere evidencia local/directa para estado del repo; documentación oficial primaria y versionada para hechos técnicos externos; respuesta atribuida del usuario para intención/preferencia.
+3. Inspecciona el contenido fuente relevante; un título, snippet o resultado de búsqueda solo orienta. Comprueba fecha/versión/commit/base si existe. Contrasta fuentes y busca contraevidencia cuando puedan cambiar la conclusión.
+4. Registra cada afirmación con la referencia específica que la soporta, y separa lo que esa evidencia no permite concluir. Una evidencia estática describe el checkout; no es ejecución.
+5. Si falta fuente/acceso, declara método, alcance y límite; propone otra fuente o búsqueda solo si su valor justifica el coste. La ausencia no se deduce de una búsqueda parcial.
 
 **Ejemplo:** «En `config.yml` leído en commit A, timeout=4s [hecho estático]; el README describe 10s pero no indica versión [fuente leída, vigencia indeterminada]; desconozco el timeout de producción [no observado]. Recomiendo conservar compatibilidad con clientes que esperan 4s, salvo que el owner quiera cambiar contrato». No escribir “producción tiene 4s” ni “10s está obsoleto” sin evidencia.

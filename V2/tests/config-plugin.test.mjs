@@ -26,10 +26,11 @@ export const applyArtifactTracking=plan=>({saved:true,changed:true,mode:plan.mod
 export const restoreArtifactTracking=()=>({restored:true,changed:true,blockers:[]});`);
     const source=String.raw`
       import plugin from ${JSON.stringify(path.join(root,'plugins/opencode-v2/index.ts'))};
+      import {createNativePermissionHost} from ${JSON.stringify(path.join(root,'tests/native-permission-host.mjs'))};
       const registered={};let locations=[];const selected={providerID:'openai',id:'gpt-6.1-sol',variant:'high'};
-      const ctx={tool:{transform:async fn=>fn({add:x=>registered[x.name]=x})},session:{get:async()=>({location:{directory:'/session/workspace'},model:selected})},model:{list:async options=>{locations.push(options);return {location:options.location,data:[{providerID:'openai',id:'model-a',name:'Model A',enabled:true,status:'active',variants:[{id:'high'}]},{providerID:'secret-provider',id:'hidden',name:'SECRET BODY',enabled:true,status:'active',apiKey:'never-return'},{providerID:'openai',id:'disabled',enabled:false,status:'active'}]}}}};
+      const ctx={...createNativePermissionHost(),tool:{transform:async fn=>fn({add:x=>registered[x.name]=x})},session:{get:async()=>({location:{directory:'/session/workspace'},model:selected})},model:{list:async options=>{locations.push(options);return {location:options.location,data:[{providerID:'openai',id:'model-a',name:'Model A',enabled:true,status:'active',variants:[{id:'high'}]},{providerID:'secret-provider',id:'hidden',name:'SECRET BODY',enabled:true,status:'active',apiKey:'never-return'},{providerID:'openai',id:'disabled',enabled:false,status:'active'}]}}}};
       await plugin.setup(ctx);
-      const call=async(name,args)=>registered[name].execute(args,{sessionID:'ses-test'});
+       let callIndex=0;const call=async(name,args)=>registered[name].execute(args,{sessionID:'ses-test',agent:'sol',id:'call-'+(++callIndex),messageID:'message-'+callIndex,signal:new AbortController().signal});
       const get=await call('sol_config_get',{offset:0,limit:20});
       if(!String(get.content).includes('openai/model-a')||String(get.content).includes('never-return')||String(get.content).includes('apiKey'))throw Error('catálogo no saneado');
        if(!String(get.content).includes('Modelo seleccionado en esta sesión'))throw Error('falta separación de sesión');
@@ -37,7 +38,7 @@ export const restoreArtifactTracking=()=>({restored:true,changed:true,blockers:[
       const revision='${'a'.repeat(64)}',artifactRevision='${'b'.repeat(64)}';const args={profile:'custom',overrides:[{agentId:'sol',model:'openai/model-a#high'}],expectedRevision:revision,artifactTracking:'versioned',artifactExpectedRevision:artifactRevision};const preview=await call('sol_config_apply',args);
       if(globalThis.applied||!String(preview.content).includes('Vista previa combinada (no guardada)'))throw Error('preview guardó');
       await call('sol_config_apply',{...args,dryRun:false});
-      if(!globalThis.applied||globalThis.plan.catalog.length!==3||globalThis.plan.overrides.sol!=='openai/model-a#high'||globalThis.trackingPlan.mode!=='versioned')throw Error('apply/catalog/overrides incorrectos');
+       if(!globalThis.applied||globalThis.plan.catalog.length!==3||globalThis.plan.overrides.sol!=='openai/model-a#high'||globalThis.trackingPlan.mode!=='versioned')throw Error('apply/catalog/overrides incorrectos: '+JSON.stringify({applied:globalThis.applied,plan:globalThis.plan,trackingPlan:globalThis.trackingPlan}));
       if(locations.some(item=>item.location.directory!=='/session/workspace'))throw Error('no usa directorio de sesión');
       if('switchModel' in ctx.session)throw Error('API de cambio de sesión inesperada');
       console.log('PASS isolated plugin contract');

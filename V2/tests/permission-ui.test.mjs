@@ -35,5 +35,15 @@ test('TUI registers only init and version slashes; cancellation stays in the pal
  }finally{fs.rmSync(home,{recursive:true,force:true});}
 });
 
+test('TUI accepts the documented OpenCode v2 session route and keeps the legacy structural form compatible',async()=>{
+ const {default:fs}=await import('node:fs');const {default:os}=await import('node:os');const {default:path}=await import('node:path');const {spawnSync}=await import('node:child_process');const {fileURLToPath}=await import('node:url');
+ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),home=fs.mkdtempSync(path.join(os.tmpdir(),'sol-tui-route-'));
+ try{
+  const source=`import {sessionIDFromRoute} from ${JSON.stringify(path.join(root,'plugins/opencode-v2/tui.ts'))};const result=[sessionIDFromRoute({name:'session',params:{sessionID:'new-session'}}),sessionIDFromRoute({type:'session',sessionID:'existing-session'}),sessionIDFromRoute({name:'home'}),sessionIDFromRoute({name:'session',params:{}})];console.log(JSON.stringify(result));`;
+  const result=spawnSync(process.execPath,['--experimental-strip-types','--input-type=module','-e',source],{encoding:'utf8',env:{...process.env,HOME:home,USERPROFILE:home}});
+  assert.equal(result.status,0,`${result.stdout}\n${result.stderr}`);assert.deepEqual(JSON.parse(result.stdout),['new-session','existing-session',null,null]);
+ }finally{fs.rmSync(home,{recursive:true,force:true});}
+});
+
 test('dispose rejects its exact pending native request without sending approval',async()=>{const f=fixture();const replies=[];f.ctx.client.permission.reply=async input=>replies.push(input);await f.emit();f.presenter.dispose();await new Promise(r=>setImmediate(r));assert.deepEqual(replies,[{sessionID:f.input.sessionID,requestID:f.input.requestID,decision:'reject'}]);});
 test('dispose while create is in flight rejects the late native prompt',async()=>{const f=fixture();let release;const replies=[];f.ctx.client.permission.create=()=>new Promise(r=>release=r);f.ctx.client.permission.reply=async input=>replies.push(input);const pending=f.emit();await new Promise(r=>setImmediate(r));f.presenter.dispose();release({effect:'ask',id:f.input.requestID});await pending;assert.equal(replies.length,1);assert.equal(replies[0].decision,'reject');assert.equal(f.calls.cancel.length,1);});

@@ -45,7 +45,9 @@ test('CLI acepta perfil equilibrado y asignaciones custom explícitas',()=>{
 test('OpenCode v2 installation includes core, plugin, agent, commands and native skills',t=>{
   const home=temp(t),result=install(options(home));
   assert.deepEqual(result.runtimes,['opencode-v2']);assert.equal(result.opencodeVersion,v2());
-  for(const file of ['.config/opencode/agents/sol.md','.config/opencode/plugins/sol/index.ts','.config/opencode/plugins/sol/package.json','.config/opencode/commands/sol-init.md','.config/opencode/commands/sol-config.md','.config/opencode/skills/sol-init/SKILL.md','.config/opencode/skills/sol-discovery/SKILL.md','.sol/lib/artifacts.mjs','.sol/lib/contracts.mjs','.sol/lib/jsonc.mjs','.sol/lib/model-config.mjs','.sol/lib/model-profiles.mjs','.sol/schemas/shipping-intent.schema.json'])assert.ok(fs.existsSync(path.join(home,file)),file);
+  for(const file of ['.config/opencode/agents/sol.md','.config/opencode/plugins/sol/index.ts','.config/opencode/plugins/sol/package.json','.config/opencode/plugins/sol/tui.ts','.config/opencode/commands/sol-config.md','.config/opencode/skills/sol-init/SKILL.md','.config/opencode/skills/sol-discovery/SKILL.md','.sol/lib/artifacts.mjs','.sol/lib/contracts.mjs','.sol/lib/jsonc.mjs','.sol/lib/model-config.mjs','.sol/lib/model-profiles.mjs','.sol/schemas/shipping-intent.schema.json'])assert.ok(fs.existsSync(path.join(home,file)),file);
+  assert.equal(fs.existsSync(path.join(home,'.config/opencode/commands/sol-init.md')),false,'sol-init is registered by the native TUI plugin, not a Markdown dispatcher');
+  assert.match(fs.readFileSync(path.join(home,'.config/opencode/plugins/sol/tui.ts'),'utf8'),/slash: \{ name: "sol-init"/);
   if(fs.existsSync(path.join(path.dirname(new URL(import.meta.url).pathname),'..','lib','artifact-tracking.mjs')))
     assert.ok(fs.existsSync(path.join(home,'.sol/lib/artifact-tracking.mjs')));
   for(const file of ['.sol/bin/sol.mjs','.sol/bin/prepare.mjs','.sol/lib/install.mjs','.sol/lib/composition.mjs','.agents/skills/sol-init/SKILL.md'])assert.equal(fs.existsSync(path.join(home,file)),false,file);

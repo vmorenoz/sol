@@ -47,10 +47,10 @@ test('recognized legacy migration rolls back payload and both configs if final m
   const jsonc='{// keep\n"model":"vendor/keep","mcp":{"outside":{"url":"stay"}}}';
   const originals=new Map([[`${oc}/plugins/sol.js`,loader],[`${oc}/opencode.json`,json],[`${oc}/opencode.jsonc`,jsonc]]);
   for(const [file,bytes] of originals)put(home,file,bytes);
-  const rename=fs.renameSync;let failed=false;
-  fs.renameSync=function(from,to){if(!failed&&to===path.join(home,'.sol/installation.json')){failed=true;throw Object.assign(new Error('fixture final write failure'),{code:'EIO'});}return rename.call(this,from,to);};
+  const rename=fs.renameSync,manifestPath=path.join(fs.realpathSync(home),'.sol/installation.json');let failed=false;
+  fs.renameSync=function(from,to,...args){if(!failed&&path.resolve(String(to))===manifestPath){failed=true;throw Object.assign(new Error('fixture final write failure'),{code:'EIO'});}return rename.call(this,from,to,...args);};
   try{assert.throws(()=>install(options(home)),/archivos gestionados restaurados/);}finally{fs.renameSync=rename;}
-  assert.equal(failed,true);for(const [file,bytes] of originals)assert.equal(fs.readFileSync(path.join(home,file),'utf8'),bytes);
+  assert.equal(failed,true,'fault injection must hit the final manifest rename through the real installer path');for(const [file,bytes] of originals)assert.equal(fs.readFileSync(path.join(home,file),'utf8'),bytes);
   for(const relative of ['.sol/release.json','.sol/installation.json',`${oc}/plugins/sol/index.ts`])assert.equal(fs.existsSync(path.join(home,relative)),false,relative);
   const result=install(options(home));assert.deepEqual(result.legacy,['loader-v1']);assert.equal(fs.existsSync(path.join(home,`${oc}/plugins/sol.js`)),false);
   const config=parseJSONC(fs.readFileSync(path.join(home,`${oc}/opencode.jsonc`),'utf8'));assert.equal(config.auth.token,'fixture-only-secret');assert.equal(config.mcp.sol,undefined);assert.equal(config.mcp.outside.url,'stay');assert.deepEqual(config.plugin,[]);

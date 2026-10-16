@@ -18,7 +18,20 @@ type OpenCodeCLIContext = {
   keymap: { layer(factory: () => { mode: "global"; commands: VersionCommand[] }): unknown }
   client?: any
   data?: any
-  ui: { router?: { current(): { type: string; sessionID?: string } }; dialog: { alert(input: { title: string; message: string }): Promise<unknown>; select?: any; confirm?: any } }
+  ui: { router?: { current(): unknown }; dialog: { alert(input: { title: string; message: string }): Promise<unknown>; select?: any; confirm?: any } }
+}
+
+/**
+ * OpenCode v2 routes identify a session as {name, params: {sessionID}}.
+ * Keep the earlier structural form only for compatible hosts while the
+ * authoritative server lookup below still verifies that the session is Sol.
+ */
+export function sessionIDFromRoute(route: unknown): string | undefined {
+  if (!route || typeof route !== "object") return undefined
+  const value = route as { name?: unknown; params?: { sessionID?: unknown }; type?: unknown; sessionID?: unknown }
+  if (value.name === "session" && typeof value.params?.sessionID === "string") return value.params.sessionID
+  if (value.type === "session" && typeof value.sessionID === "string") return value.sessionID
+  return undefined
 }
 
 export default {
@@ -28,9 +41,9 @@ export default {
     const permissions = createPermissionPresenter(ctx)
     let dispatcher: ReturnType<typeof createInitDispatcher> | undefined
     const currentSession = () => {
-      const route = ctx.ui.router?.current()
-      if (route?.type !== "session" || !route.sessionID) throw new Error("Abre una sesión con el agente Sol antes de /sol-init.")
-      return route.sessionID
+      const sessionID = sessionIDFromRoute(ctx.ui.router?.current())
+      if (!sessionID) throw new Error("Abre una sesión con el agente Sol antes de /sol-init.")
+      return sessionID
     }
     const init = async () => {
       if (dispatcher) return dispatcher

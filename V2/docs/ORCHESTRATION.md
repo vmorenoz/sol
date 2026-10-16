@@ -2,6 +2,8 @@
 
 Sol es el principal de OpenCode producto v2 y coordina los nueve especialistas nativos existentes. OpenCode gestiona sesiones, ejecución, interrupción, compacción, herramientas, permisos y notificaciones. Sol aporta contexto, criterio de selección, decisiones, aceptación y continuidad del trabajo. No hay otro runtime, adaptadores multiruntime, scheduler ni agentes líderes anidados.
 
+Las prácticas de ingeniería se consultan mediante `sol-engineering-practices` solo cuando son pertinentes, abriendo una referencia temática. La skill refuerza roles existentes; no añade agentes, delegación anidada, fases, autorización ni requisitos de herramientas. Research/ideación/especificación corresponden a `sol-discovery`, no a esta colección.
+
 ## Elegir el siguiente trabajo
 
 La unidad de decisión es el próximo resultado útil, condicionado por incertidumbre, dependencias, riesgo y capacidad disponible. No existe una secuencia Researcher→Explorer→Planner→Auditor→Executor→QA. Una corrección acotada puede ir directamente al Executor; un plan del usuario suficiente se reutiliza. Researcher investiga grises, Explorer la realidad del repositorio, Planner estrategia y tareas, y cada auditor se convoca por una necesidad concreta.
@@ -14,11 +16,48 @@ La unidad de decisión es el próximo resultado útil, condicionado por incertid
 - Integrar un grupo de dependencia cuando esté listo; no esperar a un frente independiente para consolidar su resultado. Serializar las mutaciones del mismo Work.
 - Revisar de nuevo solo evidencia afectada por cambios materiales. Un avance de revisión o un cambio disjunto no invalida automáticamente todo el resultado.
 
-## Un formato de conversación, persistencia según necesidad
+## Sesión por encargo y aceptación
 
-Encargos y respuestas usan Markdown natural estructurado con flexibilidad. El encargo ofrece objetivo, aceptación, contexto/decisiones, referencias, límites de escritura y dependencias relevantes; no una transcripción completa. La respuesta empieza por resultado/hallazgo y añade evidencia, cambios/comprobaciones, límites y próximo paso cuando aporten valor. No hay encabezados obligatorios, parser de Markdown ni la pareja obligatoria report.md/result.json.
+La sesión pertenece al encargo, no al especialista ni al Work. Cada encargo nuevo se delega con `subagent` **sin `sessionID`**, incluso si repite especialista o Work. El handoff debe ser autosuficiente: objetivo, rol, alcance, base vigente, aceptación, decisiones y referencias concretas a evidencia y artefactos autorizados. El estado duradero reside en esos artefactos, no en el historial de una sesión hija; esto no autoriza preparar persistencia no solicitada.
 
-Un documento solicitado se entrega una vez y se enlaza. Una tarea con Work que requiera evidencia recibe desde el inicio una ruta única y writeScope para el Markdown de entrega/evidencia, porque el registro exige report local existente y archivos fingerprintables. Ese mismo artefacto cumple ambos propósitos, sin JSON ni informe duplicado; sin Work puede bastar el mensaje. Sol integra y registra decisiones/entregas; un especialista asignado escribe work.md, decision.md o delivery.md en su ruta exacta. La responsabilidad de Sol sobre la decisión no permite eludir por shell el deny de edición de .sol. Archivos históricos tienen rutas únicas y las correcciones conservan el anterior; código y documentos vivos siguen editables en scope. Las plantillas son guías de contenido. Los schemas JSON siguen sirviendo al estado interno y a las tools; delegation/result antiguos se pueden leer y validar como legacy, sin exigir ese transporte al especialista.
+Solo se reutiliza el `sessionID` nativo devuelto para aclarar, completar o corregir el **mismo encargo todavía no aceptado por Sol**, con rol, scope y base compatibles. Cambiar de encargo o rol, o pasar a un scope/base incompatible, requiere una sesión nueva. Un avance disjunto de revisión no es por sí solo incompatibilidad: Sol contrasta su efecto material. La entrega del especialista, incluso marcada completed, no cierra el encargo: lo cierra la aceptación del orquestador tras revisar resultado y evidencia. Después de aceptarlo, cualquier otro encargo comienza limpio.
+
+Toda auditoría independiente empieza sin `sessionID`. El seguimiento compatible del mismo encargo auditor puede continuar hasta su aceptación; ni la sesión de implementación ni la de una auditoría ya aceptada se reutilizan para una auditoría nueva.
+
+Ejemplos de decisión (guía, no ejecución observada):
+
+- El Executor entrega sin evidencia suficiente: Sol pide la comprobación faltante en la misma sesión si sigue dentro del encargo y su base es compatible.
+- Sol acepta una implementación y asigna otra tarea al mismo Executor dentro del mismo Work: nueva sesión y handoff desde los artefactos vigentes.
+- Una revisión independiente detecta un fallo: el auditor puede aclarar el hallazgo en su sesión aún no aceptada; una corrección asignada al Executor es otro encargo y empieza limpia.
+
+La documentación de OpenCode v2 describe [contexto limpio de los subagentes](https://opencode.ai/v2/docs/agents/#modes) y [continuación mediante sessionID](https://opencode.ai/v2/docs/tools/#subagent). Sol expresa esta política en sus instrucciones y plantilla de delegación, distribuidas por la composición existente; no añade un selector ni enforcement determinista de fresh/resume al runtime. Los reintentos técnicos y la idempotencia del init nativo conservan la identidad de su operación: no se recrean sesiones/hijos por aplicar esta política. El dispatcher y el runtime de init mantienen su contrato.
+
+## Contrato Markdown de mensajes; persistencia según necesidad
+
+El transporte sigue siendo la herramienta `subagent` y sus sesiones/eventos nativos; este contrato solo estructura el contenido legible del mensaje, sin parser, JSON obligatorio ni wrapper XML.
+
+**Entrada de Sol → especialista**, según `templates/delegation.md`:
+
+```md
+## Objetivo
+Investigar por qué falla la exportación con CSV grandes.
+## Contexto y referencias
+Revisa `src/export.mjs` y el test de streaming; Work `csv-export`, rev. 3, tarea `T-2`.
+## Alcance y restricciones
+Lee esos archivos; escribe solo en `src/export.mjs` y su test. No añadas dependencias.
+## Criterios de aceptación
+Conservar filas y memoria acotada; comprobar regresión y errores pertinentes.
+## Entrega esperada
+Resumen, cambios, comprobaciones reales y límites según el rol.
+```
+
+Usa los cinco encabezados en ese orden, con extensión proporcional. Distingue rutas para leer de las de escritura; `writeScope` orienta conducta, no amplía permisos ni es sandbox del host. Incluye IDs/revisión de Work solo si existen y ayudan; no vuelques el Work ni repitas instrucciones comunes del rol. En una tarea trivial, cada sección puede ser una frase y los detalles opcionales se omiten.
+
+**Respuesta especialista → Sol**: mínimo `## Resultado` (estado declarado `completo`, `parcial`, `bloqueado` o `fallido` y resumen), `## Evidencia y comprobaciones` y `## Pendientes y límites`; añade `## Cambios o hallazgos` cuando aplique. Research vincula afirmaciones a fuentes; Executor informa cambios y comprobaciones reales/no ejecutadas; auditores priorizan hallazgos o delimitan el alcance sin hallazgos; Planner y Explorer describen su resultado sin fingir cambios o pruebas.
+
+El estado declarado no es el estado de sesión que informa OpenCode: `completed` del host no prueba cumplimiento ni aceptación. Sol contrasta respuesta, referencias, criterios, cambios y evidencia antes de aceptar y registrar metadata por las tools existentes. Si falta contenido o parece truncado, no acepta ni lo reconstruye; pide solo el faltante al mismo hijo si el encargo sigue sin aceptar y la sesión/rol/scope/base son compatibles. No repite todo el trabajo ni inventa evidencia; no añade aprobación del usuario.
+
+Este contrato es para mensajes, no para documentos persistentes: las plantillas `research.md`, `implementation.md`, `review.md`, `exploration.md` y demás siguen siendo flexibles según su propósito. Si se pide un documento o el Work requiere evidencia durable, asigna desde el inicio una sola ruta y writeScope; el mismo Markdown sirve como entrega/evidencia, sin JSON ni duplicado. Si no, puede bastar el mensaje. Los schemas JSON son para estado/tools; `delegation`/`result` estructurados son legacy, no el transporte obligatorio ni prueba de ejecución o aceptación.
 
 Sol correlaciona la respuesta con la llamada nativa, rol y encargo; verifica referencias y registra hechos mediante las tools existentes. Markdown no elimina trazabilidad ni autoriza inventar IDs, ejecución, propiedad o aprobación. Ante un dato esencial ausente, se pide solo ese dato. Un resultado de auditoría terminado puede contener fallos y no equivale a aceptación del Work.
 
