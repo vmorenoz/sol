@@ -1,18 +1,10 @@
-# Evidencia · {{work-id}} · {{evidence-id}}
+# Evidencia · {{referencia del encargo/comprobación}}
 <!-- template: evidence@1.0 -->
-## Afirmación verificada
-{{AC-ID y tareas asociadas; qué permite concluir esta evidencia.}}
-## Base comprobada
-{{Commit si existe, cambios locales relevantes, archivos y SHA-256 calculados.}}
-## Método y entorno
-{{executed/manual/static/not_run; directorio, comando exacto, versiones observadas y prerrequisitos.}}
 ## Resultado observado
-{{pass/fail/blocked/not_run; exit code real; aserciones y resultados, sin secretos.}}
-## Cobertura
-{{Positivo, vacío, error, integración y demás escenarios según proyecto.}}
-## Omitido o bloqueado
-{{Pruebas no ejecutadas, skips, servicios inaccesibles y consecuencias.}}
-## Vigencia
-{{Cambios que invalidarían esta evidencia; fingerprint de archivos, no solo nombre del test.}}
-## Referencias
-{{Informes o salidas saneadas, sin logs indiscriminados.}}
+{{Qué permite concluir para los criterios/tareas asignados y qué no. Pass/fail/blocked/not_run; terminar la verificación no implica PASS funcional.}}
+## Método y base
+{{Executed/manual/static/not_run; comando exacto/directorio/exit real si se ejecutó, observación reproducible si fue manual/estática, base y archivos relevantes de producto/tests/configuración. Fecha/versión solo observadas. Sol calcula hashes al registrar.}}
+## Cobertura y límites
+{{Escenarios relevantes y criterios/tareas con evidencia vigente, parcial, ausente, bloqueada o no verificable. Mocks solo prueban bajo ese mock, smoke offline no es conducta live. Omitidos/skips y dependencias inaccesibles cuando existan.}}
+## Referencias y vigencia
+{{Salida reducida/saneada o referencias reales. Una edición material invalida aceptación actual afectada, no borra un PASS histórico. No regenerar huellas para ocultar cambios. Un informe/fingerprint/schema no demuestra ejecución por sí solo.}}

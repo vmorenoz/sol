@@ -1,15 +1,14 @@
 ---
 name: sol-recap
 description: Resumir cierres de un período y el snapshot actual de trabajos abiertos.
-user-invocable: true
-disable-model-invocation: true
+slash: false
 ---
 # sol-recap
-Esta skill es una entrada conversacional para Sol, no un nuevo agente ni un script autónomo. Solo actúa como LT si el agente principal efectivo es sol; de lo contrario indica que debe seleccionarse sol. Una skill no cambia por sí sola la identidad del agente.
+Sol carga esta skill según la intención de la conversación y el estado disponible; no requiere slash ni comando de workflow. Es una guía para Sol, no un nuevo agente ni un script autónomo. Solo actúa como LT si el agente principal efectivo es sol; de lo contrario indica que debe seleccionarse sol. Una skill no cambia por sí sola la identidad del agente.
 
 Usa `sol_history` para cierres y `sol_status` para el snapshot abierto del workspace activo; nunca HOME. Los abiertos no quedan filtrados por período. No confundas fecha de cierre con toda su actividad. Usa fechas exactas si la petición es ambigua, sin inventar un historial diario inexistente. Abre detalles con `sol_work_get` solo cuando hace falta.
 
-El argumento es un período opcional en texto natural o con fechas exactas, por ejemplo `últimos 7 días`, `septiembre de 2026` o `2026-09-01 a 2026-09-29`. Sin argumento, resume los últimos 7 días e indica el rango exacto aplicado. No espera flags ni sintaxis de shell.
+La petición en conversación puede indicar un período opcional en texto natural o con fechas exactas, por ejemplo `últimos 7 días`, `septiembre de 2026` o `2026-09-01 a 2026-09-29`. Sin más detalle, resume los últimos 7 días e indica el rango exacto aplicado. No espera flags ni sintaxis de shell.
 
 Esta consulta es de solo lectura. Si faltan artefactos, no inicialices, prepares, mapees ni repares: informa que no hay estado de Sol disponible. Si el formato es legacy/incompatible, identifícalo sin adoptar sus estados o permisos como actuales. Un resumen persistido debe identificarse por su última actualización; no demuestra actividad viva.
 

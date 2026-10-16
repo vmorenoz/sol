@@ -1,17 +1,10 @@
-# Revisión · {{rol}} · {{work-id}}
+# Revisión · {{rol}} · {{referencia del encargo}}
 <!-- template: review@1.0 -->
-## Alcance y base revisada
-{{Qué artefactos/código, revisión y criterios; qué queda fuera.}}
-## Método y evidencia
-{{Qué se inspeccionó o ejecutó y con qué limitaciones.}}
-## Hallazgos
-| ID | Severidad | Hallazgo e impacto | Referencia reproducible | Corrección sugerida |
-|---|---|---|---|---|
-| {{F-ID}} | {{critical/high/medium/low/info}} | {{defecto}} | {{archivo:línea/escenario}} | {{acción}} |
-Si no hay hallazgos, declararlo sin inventar una tabla ni certificar ausencia total de defectos.
-## Cobertura frente a aceptación
-{{Criterios cubiertos, omitidos y contradicciones.}}
-## Conclusión
-{{Sin bloqueos observados / requiere correcciones / no verificable, con razones.}}
-## Límites y decisiones pendientes
-{{Recomendaciones no obligatorias por separado; no fingir aprobación institucional.}}
+## Conclusión y hallazgos
+{{Resultado útil primero. Por hallazgo: impacto/gravedad justificada, referencia, razonamiento/reproducción y corrección mínima. Separar defecto, incertidumbre y mejora opcional. Si no hay hallazgos, no inventar tabla ni certificar ausencia total.}}
+## Alcance, base y evidencia
+{{Qué se contrastó, decisiones/criterios pertinentes, archivos/contratos, método y límites. Distinguir observación estática, pruebas reales e intención documentada.}}
+## Cobertura relevante
+{{Criterios/tareas del encargo y evidencia vigente o brecha. Para integración, relaciones y recorrido afectados; no sumar PASS aislados como aceptación global.}}
+## Decisiones o siguiente paso
+{{Solo lo pendiente que cambia una acción. Revisión completada puede requerir correcciones; no implica aprobación del usuario. Omitir secciones vacías.}}

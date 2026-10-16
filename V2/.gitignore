@@ -1,4 +1,5 @@
 node_modules/
+.codegraph/
 *.tmp
 .DS_Store
 coverage/

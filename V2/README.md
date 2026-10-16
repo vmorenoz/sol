@@ -1,50 +1,99 @@
-# Sol · OpenCode v2
+# Sol 2.2.0 para OpenCode v2
 
-Sol es un **Asistente IA para desarrollo** que orquesta especialistas nativos de OpenCode v2 y conserva planes, contexto, trabajos, estado e historial en `.sol/`. Sus delegaciones siguen siendo llamadas nativas inspeccionables; el plugin ofrece tools semánticas con recibos breves para reducir ruido de escrituras.
+Sol es un asistente de desarrollo que convierte encargos en trabajo coordinado y recuperable. Usa las herramientas de OpenCode para delegar a especialistas y conserva por workspace el objetivo, tareas, decisiones, bloqueos, evidencia y cierres. El código del proyecto sigue siendo la fuente de verdad: Sol organiza el trabajo y ayuda a verificarlo; no sustituye el juicio del usuario ni certifica automáticamente que un cambio sea correcto.
 
-El core valida y persiste artefactos localmente. Sol no es runtime de agentes, MCP server, daemon, scheduler ni base de datos. OpenCode v2 es el único runtime distribuido; OpenCode v1 se rechaza y VS Code queda fuera hasta tener un adaptador propio.
+Consulta la [auditoría 2.2 y sus límites de validación](docs/AUDIT-2.2.md); los [cambios 2.1](docs/HARDENING-2.1.md) quedan como antecedente.
 
-## Instalar
+## Empieza aquí
 
-Requiere Node.js 22+ y OpenCode v2 disponible en `PATH`:
+Requisitos para instalar: Node.js 22 o posterior y OpenCode v2 accesible como `opencode` en `PATH`. Desde esta carpeta:
 
 ```sh
+node install.mjs --help
+node install.mjs --dry-run
 node install.mjs
 ```
 
-Para comprobar la vista previa sin escribir:
+Para instalar con el perfil fijo equilibrado, añade `--profile balanced`; sin esa opción se conservan tus preferencias existentes, incluidos los modelos de Sol. En una primera instalación sin preferencias se hereda OpenCode; `--profile inherited` solicita explícitamente retirar las asignaciones Sol reconocidas. Tras instalar, `/sol-config` permite consultar o cambiar preferencias globales de modelos de los agentes Sol mediante asistente de tres pasos: perfil, tracking Local/Versionado del workspace actual y vista previa/confirmación. Para el modelo principal de OpenCode usa `/models`; `/sol-config` no cambia el modelo ya seleccionado en la sesión ni hace escalado/cambio automático de modelos.
 
-```sh
-node install.mjs --dry-run
+La vista previa no escribe archivos ni crea respaldos. La instalación actual es global para el usuario; revisa primero [Instalación y retirada](docs/INSTALLATION.md), en especial qué casos legacy reconoce y qué conserva. Al aplicar cambios, las versiones de recursos gestionados que se reemplazan/eliminan y las configuraciones legacy que se editan se respaldan bajo `.sol/backups/`. Tras instalar, reinicia OpenCode, elige `sol` como agente principal y ejecuta `/sol-version`: distingue el build del plugin cargado del que está instalado en disco. `node install.mjs --version` consulta esta distribución; `node version.mjs` no demuestra qué plugin mantiene cargado otra sesión. Para quitar la instalación administrada, ejecuta `node install.mjs uninstall --dry-run` y, tras revisar el plan, `node install.mjs uninstall`.
+
+Las pruebas automatizadas usan perfiles y repositorios Git temporales; no se instaló Sol en el HOME real, no se cambió metadata Git real ni se probó una sesión real de OpenCode en este pase. Comprueba los [límites de validación](docs/VALIDATION.md).
+
+## Úsalo conversando
+
+Describe el resultado que quieres, no una secuencia de herramientas. Por ejemplo:
+
+- «Añade exportación CSV al listado de facturas. Primero inspecciona cómo se generan las exportaciones; propone tareas y criterios verificables, y espera mi aprobación del plan.»
+- «¿Qué trabajos están abiertos y cuál es el siguiente paso?»
+- «Retoma `work-export-csv`: comprueba el estado actual del repositorio y dime qué quedó pendiente.»
+- «Resume los trabajos cerrados entre el 1 y el 30 de septiembre de 2026 y compáralos con los abiertos.»
+- «Audita los cambios de accesibilidad del formulario; señala evidencia, límites y cualquier verificación que no se haya ejecutado.»
+
+Comandos públicos: `/sol-init` despacha preparación/mapeo inicial nativo sin turno previo de Sol, con tracking autorizado; `/sol-config` configura explícitamente preferencias de modelos Sol y tracking Local/Versionado; `/sol-version` identifica la versión cargada mediante el comando diagnóstico nativo. No hay comandos de workflow: conversa con Sol («planea esto», «implementa el cambio aprobado», «qué queda», «retoma este trabajo»). Sol carga las skills `sol-new-project`, `sol-onboard`, `sol-discuss`, `sol-plan`, `sol-execute`, `sol-verify`, `sol-ship`, `sol-status`, `sol-recap` y `sol-resume` según intención, estado y autorización. Pregunta solo las decisiones necesarias y continúa lo ya autorizado; plan-only y publicación conservan sus límites. Ningún encargo ordinario inicializa tracking automáticamente. Véase [Descubrimiento](docs/DISCOVERY.md), [orquestación](docs/ORCHESTRATION.md) y [Inventario](docs/INVENTORY.md).
+
+Un saludo, consulta de estado, onboarding readonly o encargo ordinario no prepara ni modifica `.sol/`. Init exige tracking Local/Versionado previamente configurado y autorizado; si falta, se bloquea sin crear `.sol/` ni inicializar Git. El dispatcher reserva tareas y lanza Exploradores con outputs individuales; Sol después integra Discovery, publica el mapa con una herramienta estrecha y cierra solo con todas las entregas válidas. Los resultados parciales conservan sus límites. Véase [auditoría 2.2](docs/AUDIT-2.2.md) para correcciones y validación pendiente del host.
+
+## Modelo mental
+
+- **Workspace**: directorio activo que OpenCode proporciona al plugin; cada proyecto mantiene sus propios datos en `.sol/`.
+- **Work**: unidad de coordinación con objetivo y criterios, tareas, estado, bloqueos, documentos y evidencia; cambia mediante revisiones numeradas.
+- **Delegación**: encargo visible a un especialista nativo de OpenCode con alcance y resultado esperados. El catálogo contiene nueve especialistas además del agente Sol.
+- **Evidencia**: registro de verificaciones y huellas de archivos. Una huella identifica el contenido comprobado; no demuestra por sí sola la calidad ni que una sesión real haya ocurrido.
+- **Recibo**: resumen de una mutación aplicada, no una auditoría ni un certificado.
+
+La herramienta Sol obtiene la raíz del contexto de sesión, no de texto que aporte el modelo. Estado, trabajos e historial se modifican mediante tools Sol; una revisión obsoleta se rechaza para que Sol relea y concilie, no sobrescriba. Los detalles están en la [guía de flujo](docs/WORKFLOW.md).
+
+## Qué hace y qué no
+
+Sol registra y consulta trabajo, coordina investigación/planificación/implementación/revisión con especialistas, y conserva continuidad por proyecto. El core valida esquemas y consistencia local, y puede comprobar si la evidencia registrada sigue vigente.
+
+Sol no es un runtime de agentes, daemon, scheduler, servidor MCP ni base de datos externa. No implementa el producto por sí mismo: la ejecución se delega a especialistas nativos según las instrucciones y permisos efectivos de OpenCode. `/sol-config` es la excepción administrativa explícita: solo cambia preferencias fijas de modelos de agentes Sol y tracking del workspace activo, con vista previa, confirmación interactiva nueva y aprobación del host. No cambia providers, credenciales, permisos, el modelo principal, overrides de sesión, ni aplica staging/commit/push. Las preferencias guardadas en `agents.<id>.model` de la configuración global OpenCode afectan asignaciones futuras; la selección de modelo ya activa en la sesión principal conserva precedencia. No hay escalado ni hot-switch automático. El instalador limpia selectivamente referencias legacy reconocidas y administra solo sus propias asignaciones obsoletas. No explora repositorios para descubrirlos ni migra formatos desconocidos. Una validación offline o un recibo no equivalen a aprobación live de OpenCode.
+
+## Una implementación nativa
+
+Sol usa exclusivamente OpenCode v2: agentes principales/secundarios, sesiones, permisos y skills del host. No hay adaptadores multiruntime ni motor de ejecución paralelo. El plugin mantiene las operaciones del estado `.sol/`; la comunicación entre Sol y especialistas es Markdown natural, no payloads JSON obligatorios. Los schemas JSON siguen validando llamadas de herramientas y estado interno.
+
+Los especialistas reciben objetivo, contexto seleccionado, alcance y evidencia esperada; devuelven hallazgos y límites proporcionados al encargo. Research también incluye el diálogo con el usuario: alcanza suficiencia para el **siguiente paso**, registra la decisión pendiente y continúa lo independiente ya autorizado. Un plan solicitado para revisión nunca autoriza implementar.
+
+No es necesario instalar otro catálogo de agentes ni todos los MCP disponibles. Las capacidades externas son opcionales y se seleccionan según el proyecto; su disponibilidad no concede permiso para usarlas.
+
+## Workspace y distribución
+
+```text
+proyecto/
+└── .sol/
+    ├── state.json             # índice/snapshot y foco
+    ├── history.jsonl          # cierres
+    ├── project.md             # contexto mapeado, si se genera
+    └── work/<id>/             # work.json y documentos/evidencia del trabajo
+
+V2/                            # distribución y desarrollo de Sol
+├── agents/                    # Sol y especialistas nativos
+├── plugins/opencode-v2/       # tools del workspace activo
+├── skills/                    # skills Sol
+├── schemas/                   # contratos JSON
+├── templates/                 # formatos de artefactos
+├── lib/                       # core local
+└── docs/                      # guías de esta distribución
 ```
 
-Después reinicia OpenCode y selecciona `sol` como agente principal. La instalación administra agentes, comandos, skills, plugin y core globales; cada workspace conserva sus propios datos `.sol/`. Para desinstalar recursos globales:
+La estructura concreta puede crecer; consulta los [contratos y plantillas](docs/INVENTORY.md). En instalación global se distribuyen recursos en el perfil del usuario y OpenCode; la información de trabajo permanece dentro de cada proyecto.
+
+## Desarrollo local
+
+Requiere Node.js 22+. Desde `V2/`:
 
 ```sh
-node install.mjs uninstall
-```
-
-El instalador no modifica la configuración del host, MCP, credenciales, modelos ni permisos del usuario. [Detalles](docs/INSTALLER.md).
-
-## Uso
-
-- `/sol-status`: consultar el snapshot guardado.
-- `/sol-recap`: resumir cierres recientes y trabajos abiertos.
-- `/sol-resume`: retomar un Work existente.
-- `/sol-init`: solicitar contexto inicial cuando haga falta.
-
-Las tools `sol_work_create`, `sol_work_apply`, `sol_work_close` y `sol_work_reopen` mantienen el estado canónico. Las mutaciones requieren revisión esperada; los lotes se validan y escriben una vez. Las delegaciones a especialistas permanecen visibles. El recibo no es una prueba de calidad ni de ejecución semántica.
-
-Un saludo no inicia herramientas ni prepara el workspace. La preparación solo ocurre ante el primer encargo concreto o `/sol-init`. Datos legacy o incompatibles se preservan y bloquean; no se migran automáticamente.
-
-## Verificación y desarrollo
-
-```sh
-cd v2
 npm run build
 npm run verify
 ```
 
-Las pruebas offline cubren core, schemas, plugin assets y migración del instalador. No equivalen a smoke test de TUI ni a aceptación live de modelos/tools; esos criterios quedan `NOT_RUN` hasta validarse en OpenCode v2 real.
+`build` compone los recursos nativos; `verify` ejecuta checks estáticos/offline y la suite de pruebas. [Validación](docs/VALIDATION.md) distingue esos resultados de una prueba live. No hace falta ni se debe ejecutar el instalador para correr esas verificaciones.
 
-[Arquitectura](docs/ARCHITECTURE.md) · [Runtime](docs/RUNTIMES.md) · [Instalador](docs/INSTALLER.md) · [Operaciones](docs/OPERATIONS.md) · [Seguridad](docs/SECURITY.md).
+## Guías
+
+- [Inventario: tools, agentes, skills, comandos, schemas y templates](docs/INVENTORY.md)
+- [Flujo de trabajo, revisión y recuperación](docs/WORKFLOW.md)
+- [Instalación, conflictos y retirada](docs/INSTALLATION.md)
+- [Validación y límites de evidencia](docs/VALIDATION.md)

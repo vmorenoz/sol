@@ -21,7 +21,7 @@ test('Rechaza acciones fuera de vocabulario, lotes vacíos y rutas absolutas',t=
   const root=repo(t);create(root,'CORE-3');
   assert.throws(()=>applyWorkMutation(root,{workId:'CORE-3',expectedRevision:1,actions:[]}),/faltan elementos/);
   assert.throws(()=>applyWorkMutation(root,{workId:'CORE-3',expectedRevision:1,actions:[{type:'work.patch',pointer:'/status',value:'done'}]}),/no coincide|no admitida/);
-  assert.throws(()=>applyWorkMutation(root,{workId:'CORE-3',expectedRevision:1,actions:[{type:'work.set_overview',summary:'Ignorar',root:'/tmp'}]}),/Campo de acción no admitido/);
+  assert.throws(()=>applyWorkMutation(root,{workId:'CORE-3',expectedRevision:1,actions:[{type:'work.set_overview',summary:'Ignorar',root:'/tmp'}]}),/no coincide|no admitida/);
   assert.throws(()=>applyWorkMutation(root,{workId:'CORE-3',expectedRevision:1,actions:[{type:'document.register',document:{kind:'spec',path:'/etc/passwd',templateVersion:'spec@1.0'}}]}),/Ruta relativa inválida/);
 });
 

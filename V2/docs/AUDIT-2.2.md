@@ -1,0 +1,30 @@
+# Auditoría Sol 2.2.0
+
+Fecha: 8–9 de octubre de 2026. Alcance: código local, composición, contratos, guías y pruebas aisladas. Esta auditoría no constituye aceptación live de OpenCode ni una publicación del producto.
+
+## Hallazgos y correcciones verificables
+
+- **Comandos duplicados/obsoletos.** El catálogo Markdown conserva únicamente `sol-config`. `sol-init` y `sol-version` se registran en `plugins/opencode-v2/tui.ts`: tres slash públicos en total, sin comandos de fase. La cancelación del init está disponible únicamente en la paleta; no añade un cuarto slash. `scripts/check.mjs` comprueba ambos catálogos y la exportación TUI; la prueba de upgrade comprueba retirada y backup del antiguo dispatcher init sin borrar comandos ajenos.
+- **Init sin tareas reales o con escritores solapados.** `lib/init.mjs` reserva Work y tareas de exploración antes del despacho. Cada hijo escribe una ruta exclusiva `.sol/work/<workId>/context/<taskId>.md`. La selección superficial de unidades decide uno o varios exploradores; no acredita arquitectura ni requiere inventariar el repositorio completo.
+- **Recepción confundida con aceptación.** `recordInitResult` pertenece al flujo nativo, no al catálogo de herramientas del modelo. Una entrega recibida deja integración pendiente. Sol consulta `sol_init_get`, contrasta resultados y registra fuentes/claims en Discovery. Un hijo fallido o un artefacto alterado impide publicar/cerrar un mapa completo.
+- **Publicación amplia del mapa.** Sol dispone de `sol_init_project_publish`, restringida a `.sol/project.md` del Work init, con revisión, base y entregas vigentes. `sol_init_complete` conserva entregas, vincula evidencia estática y aplica las comprobaciones de cierre. Fuera de esta excepción estrecha, los documentos del Work corresponden al especialista asignado; metadata se modifica mediante herramientas semánticas.
+- **Repetición ante efectos inciertos.** El flujo conserva IDs nativos de sesiones, prompts y continuación; consulta estado antes de repetir. Los conflictos y resultados fallidos no autorizan sobreescritura, nuevos hijos arbitrarios ni cambios de contrato para simular éxito. La idempotencia real de transporte depende de las garantías del host y necesita validación live.
+- **Ship sin persistir intent.** `sol-ship` exige registrar el intent exacto devuelto por preflight con revisión vigente, verificar el recibo y solo después solicitar autorización correspondiente. Preview e intención no equivalen a consentimiento ni autoridad privada; los permisos del host son un gate independiente.
+- **Plan-only confundido con readonly.** Las guías permiten conservar planificación cuya persistencia ya esté autorizada. Una petición readonly o sin autorización de nuevas escrituras no prepara Work, no reabre ni escribe archivos. Planificar no autoriza implementación.
+- **Informes duplicados.** El retorno de especialistas es Markdown natural, con correlación a tareas/delegaciones reales; no exige un segundo `result.json` ni encabezados usados como parser de ejecución. Los schemas permanecen como contratos internos.
+- **Bridge de aprobación nativa.** `permission-bridge.mjs` y `permission-ui.mjs` implementan el contrato contrastado con el código oficial de OpenCode, paquete `@opencode/plugin` 2.0.24 (revisión `5b312918ecd673fdcc76094471a87067f0fa36e7`). El servidor correlaciona `permission.asked` y `permission.replied` con la sesión, ID, nonce y descriptor que contiene el hash del input. El RPC expone únicamente `describe` y `cancel`, sin endpoint de aprobación. El bridge conserva deny y requiere la pregunta nativa correspondiente antes de conceder autoridad; un booleano del modelo o una respuesta RPC no la concede. El timeout de diez segundos limita la conexión inicial, no el tiempo del usuario para decidir. Este pin identifica fuentes auditadas, no un runtime instalado. Esta implementación tiene evidencia de fixtures, todavía no aceptación live.
+- **Identidad de entrega.** La distribución declara 2.2.0. La comparación de payload cargado e instalado distingue disco de sesión activa; fixtures y archivos presentes no prueban recarga del host.
+
+## Validación observada
+
+- `node scripts/check.mjs`: PASS en los diez grupos estructurales, con `nativeRuntime: NOT_RUN`.
+- `node --test tests/central-orchestration.test.mjs tests/recovery-guidance.test.mjs tests/conversational-workflow.test.mjs`: 17/17 PASS, incluyendo migración del dispatcher init en HOME temporal.
+- Verificación final de integración: check estructural PASS y 36 tests focalizados de servidor/core/payload/contratos PASS. Separadamente, init-dispatch y permission-ui: 29/29 PASS, incluyendo carga del archivo real `tui.ts`, registro de slash/paleta y cancelación en curso correlacionada al prompt exacto. Son grupos separados; sus cifras no se suman como total único y pueden solaparse. El smoke TUI usa fixtures y no ejecuta OpenCode live.
+- Las pruebas de guías comprueban contratos de texto/composición, no obediencia de modelos. Las pruebas con HOME temporal no alteran ni validan el perfil personal.
+
+## Límites abiertos y aceptación pendiente
+
+1. El bridge de permisos está implementado y probado con fixtures; queda pendiente aceptación live de permisos, diálogos de tracking y despacho en la distribución exacta de OpenCode. La integración de código y un permiso guardado no prueban aprobación efectiva en una sesión real.
+2. Verificar en host real el rechazo antes de efectos, tracking Local/Versionado, múltiples hijos, reconexión, cancelación, respuestas inciertas y continuación a Sol. Comprobar las garantías reales de IDs/idempotencia y filesystem compartido.
+3. Probar publicación y cierre con fuentes/entregas alteradas, base de `project.md` cambiada, rama fallida y revisión obsoleta. El estado `current` acredita trazabilidad estructural, no verdad semántica, ejecución del producto ni aprobación humana.
+4. No se instalaron cambios en el Mac del usuario, no se publicó release y no se ejecutó un modelo live para esta auditoría. Tampoco se atribuye un resultado de suite completa a esta pasada focalizada.

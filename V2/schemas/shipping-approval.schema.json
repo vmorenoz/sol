@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:sol:v2:shipping-approval:1",
+  "title": "Sol shipping approval report",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "intentId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+    "snapshotSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "actions": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"enum": ["create_commit", "push_branch", "create_pr"]}},
+    "approvedAt": {"type": "string", "format": "date-time"}
+  },
+  "required": ["intentId", "snapshotSha256", "actions", "approvedAt"]
+}

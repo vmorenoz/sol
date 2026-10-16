@@ -1,14 +1,18 @@
+# Encargo para {{agente nativo exacto}}
 <!-- template: delegation.md@1.0 -->
 
-<delegation version="1">
-<identity>{{delegation-id, work-id, work-revision, task-ids, exact-agent-name}}</identity>
-<objective>{{Resultado observable del encargo, no una instrucción vaga.}}</objective>
-<context>{{Referencias mínimas, decisiones confirmadas, cambios previos y base.}}</context>
-<skills>{{Nombres y rutas de skills aplicables, cargadas bajo demanda.}}</skills>
-<template>{{Identificador relativo de la plantilla global; incluye su ruta real en resources.}}</template>
-<output>{{Ruta única asignada; indica si basta respuesta en chat.}}</output>
-<write_scope>{{Rutas y recursos permitidos; fuera de ellos no escribir.}}</write_scope>
-<acceptance>{{Qué debe demostrar la entrega.}}</acceptance>
-<constraints>{{No delegar; no editar el índice del proyecto; permisos heredados; incertidumbres.}}</constraints>
-<return>{{Usa result.json con identidad correlacionada; no declares concluido el Work.}}</return>
-</delegation>
+Guía de contenido para Markdown natural. Adapta estructura y extensión; no hay encabezados obligatorios, parser ni obligación de rellenar cada bloque. La conversación no requiere JSON ni un archivo adicional.
+
+## Objetivo y contexto
+{{Qué resultado necesita Sol, por qué importa y cuál es el próximo paso que habilitará. Fuentes concretas, acuerdos relevantes, hallazgos anteriores y base observada, sin transcripciones completas.}}
+
+## Alcance y aceptación
+{{Lecturas/escrituras autorizadas, exclusiones, resultado comprobable, decisiones pendientes que sí afectan este encargo, recursos compartidos y dependencias. Preferencias aplicables y origen.}}
+
+## Continuidad, si aplica
+{{Work/revisión/taskIds existentes y referencia del encargo nativo. No inventar metadata cuando el trabajo sea de sesión. La persistencia y los permisos son independientes: un cambio local explícitamente autorizado no exige preparar .sol. Si ya corresponde a un Work, conservar su registro.}}
+
+## Entrega esperada
+{{Resultado/hallazgo primero, referencias y evidencia, cambios/comprobaciones si hubo, límites y siguiente paso habilitado. Se responde en Markdown. Si se pidió un artefacto o el Work requiere evidencia persistente, indicar plantilla, ruta única autorizada y writeScope desde el inicio; el mismo Markdown sirve como entrega/report de evidencia y el resumen lo enlaza. Sin Work puede bastar el mensaje. No exigir report.md + result.json ni secciones vacías.}}
+
+{{Para una entrega histórica asignar ruta única; una corrección enlaza la anterior sin sobrescribirla. Los archivos vivos conservan sus permisos. Sol verifica el resultado y registra metadata por tools; el especialista no cierra Work, no delega ni cambia permisos.}}

@@ -15,5 +15,7 @@ Base: {{work revision, referencias}} · autor: {{rol}}
 | Criterio | Escenario | Resultado observable | Verificación propuesta |
 |---|---|---|---|
 | {{AC-ID}} | {{condición}} | {{resultado}} | {{tipo de prueba}} |
-## Decisiones confirmadas y dudas
-{{Fuentes, alternativas y dudas que impiden implementar; no resolverlas por invención.}}
+## Decisiones y procedencia
+{{Confirmada/propuesta/abierta, quién la confirmó y fuente. No promover recomendaciones o documentación no contrastada a decisión del usuario.}}
+## Dudas materiales, exclusiones y suficiencia
+{{Qué respuesta cambiaría aceptación/alcance/riesgo; investigación o planificación que puede avanzar; acción de implementación que debe esperar. No completar con checklist ritual ni resolver por invención.}}

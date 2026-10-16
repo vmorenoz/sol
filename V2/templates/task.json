@@ -1,6 +1,8 @@
 {
   "id": "T-1",
   "title": "Implementar el alcance acordado",
+  "kind": "implementation",
+  "contractRevision": 1,
   "criterionIds": [
     "AC-1"
   ],
