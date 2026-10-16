@@ -1,13 +1,13 @@
 # Descubrimiento e investigación
 
-El material de esta guía y `skills/sol-discovery/references/` es original para Sol; ofrece lentes y ejemplos, no copia prompts/identidades de otro producto. Para el comportamiento de metadatos/carga de skills, la referencia es la [documentación oficial OpenCode V2](https://opencode.ai/v2/docs/skills).
+El método, contratos, ejemplos locales y comportamiento de Sol son propios del proyecto. `skills/sol-discovery/references/research-method.md` adapta selectivamente ideas de nueve recursos de [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills), revisión `aeac41d4d005999432bb7312f7ff06383a91d59d`; las fuentes, cambios y texto íntegro de licencia MIT constan en [`skills/sol-discovery/references/UPSTREAM-NOTICE.md`](../skills/sol-discovery/references/UPSTREAM-NOTICE.md). No se atribuye a upstream el resto de Sol. Para metadatos/carga de skills, véase la [documentación oficial OpenCode V2](https://opencode.ai/v2/docs/skills).
 
 Sol debe poder explorar una necesidad con profundidad sin convertir la conversación en formulario ni delegar al usuario una investigación que puede hacer con evidencia accesible. El método es parte del criterio conversacional del agente central y de `sol-researcher`; `skills/sol-discovery/SKILL.md` contiene la guía ampliada.
 
 ## Método y límites
 
 1. Comprender usuarios, problema, resultado, límites y aceptación en el contexto real. En greenfield, no adelantar stack/arquitectura; en brownfield, contrastar documentación pertinente con código y configuración.
-2. Separar hechos (procedencia, fecha/versión y límite), hipótesis, recomendaciones y decisiones humanas. Encontrar una ruta no equivale a leerla; leer un doc no equivale a contrastarlo; «no hallado» no prueba ausencia.
+2. Separar hechos (procedencia, fecha/versión y límite), inferencias, hipótesis, propuestas y decisiones humanas. Cada afirmación decisiva requiere soporte específico; encontrar una ruta no equivale a leerla; leer un doc no equivale a contrastarlo; «no hallado» no prueba ausencia.
 3. Examinar solo dimensiones que puedan importar: actores/permisos, reglas/datos/estados, integraciones/consumidores, fallos/recuperación, compatibilidad/operación y éxito observable. Las lentes no son un cuestionario.
 4. Antes de preguntar, investigar lo verificable. Para incertidumbres humanas materiales, explicar motivo, opciones con consecuencias, recomendación condicional basada en evidencia y qué premisa la cambiaría. Aceptar otra opción/no sé.
 5. Adaptar el seguimiento: registrar la respuesta y su autor, aclarar solo lo material que persiste y re-investigar hechos que la respuesta ponga en duda. No repetir confirmaciones resueltas sin evidencia nueva.

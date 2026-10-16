@@ -11,7 +11,7 @@ const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 test('cada especialista conserva entregas históricas, base acotada y scope',()=>{
  for(const id of ['sol-explorer','sol-executor','sol-code-reviewer','sol-qa-auditor','sol-planner','sol-researcher','sol-security-auditor','sol-plan-auditor','sol-ui-auditor']){
   const prompt=native.get(`.opencode/agents/${id}.md`);
-  for(const clause of [/entrega histórica.*no la sobrescribas/,/ruta nueva acordada con Sol/,/base suficiente en las rutas autorizadas/,/Escribe solo el output\/writeScope asignado/,/Markdown natural estructurado/,/No se exige JSON/])assert.match(prompt,clause,id);
+  for(const clause of [/entrega histórica.*no la sobrescribas/,/ruta nueva acordada con Sol/,/base suficiente en las rutas autorizadas/,/Escribe solo el output\/writeScope asignado/,/Markdown normal con esta estructura de mensaje/,/estado declarado/])assert.match(prompt,clause,id);
  }
 });
 
@@ -20,9 +20,10 @@ test('persistencia es independiente del formato Markdown y de la autorización',
  assert.match(central,/autorización de acciones y los permisos del host son independientes de la persistencia/);
  assert.match(central,/No conviertas un encargo persistente incompleto en efímero/);
  assert.match(common,/no fabriques metadata ni reclasifiques un trabajo para evitar su registro/);
- assert.match(docs,/No hay encabezados obligatorios, parser de Markdown ni la pareja obligatoria report\.md\/result\.json/);
- assert.match(docs,/JSON.*estado interno.*tools/);
- assert.match(docs,/legacy.*sin exigir ese transporte/);
+ assert.match(docs,/Contrato Markdown de mensajes/);
+ assert.match(docs,/cinco encabezados en ese orden/);
+ assert.match(docs,/schemas JSON.*estado\/tools/);
+ assert.match(docs,/legacy.*no el transporte obligatorio/);
 });
 
 test('evidencia preserva cobertura, resultado histórico y límites de ejecución',()=>{
@@ -35,7 +36,7 @@ test('evidencia preserva cobertura, resultado histórico y límites de ejecució
 test('plantillas preservan historia y fuentes sin exigir dos reportes o parser',()=>{
  const template=read('templates/delegation.md'),catalog=read('templates/README.md');
  assert.match(template,/ruta única.*corrección enlaza la anterior/);
- assert.match(template,/No exigir report\.md \+ result\.json/);
+ assert.match(template,/No exigir result\.json, reporte duplicado/);
  assert.match(catalog,/Retirar conocimiento o archivos exige alcance autorizado/);
  assert.match(catalog,/no maximices borrados ni pierdas fuentes únicas/);
  const schema=JSON.parse(read('schemas/result.schema.json'));

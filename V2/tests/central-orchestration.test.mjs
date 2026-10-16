@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {composeNativeFiles} from '../lib/composition.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const prompt=composeNativeFiles({root}).get('.opencode/agents/sol.md');
+const native=composeNativeFiles({root});
+const prompt=native.get('.opencode/agents/sol.md');
 const section=name=>{const value=prompt.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1];assert.ok(value,`falta ${name}`);return value;};
 
 test('principal conserva fronteras nativas, permisos y gates de cierre',()=>{
@@ -18,10 +20,20 @@ test('selección dinámica conserva todos los frentes y paraleliza por dependenc
   for(const clause of [/todos los frentes autorizados/,/incertidumbre, dependencias, riesgo, capacidad/,/No sigas Researcher→Explorer→Planner/,/contratos API\/DTO.*bases de datos compartidos/,/no asignes el mismo scope a dos escritores/,/sin duplicar trabajo en curso/,/no esperes a una rama independiente/,/Serializa mutaciones del mismo Work/,/revisión independiente.*auth\/permisos\/RLS/])assert.match(body,clause);
 });
 
-test('retorno Markdown no obliga JSON ni reportes duplicados y conserva correlación',()=>{
+test('handoff y respuesta de especialista usan contratos Markdown concisos',()=>{
   const body=section('delegation_and_return');
-  for(const clause of [/Markdown natural/,/contexto rico y puntual/i,/taskIds reales previamente registrados/,/no es sessionID/,/No obligues a JSON/,/report\.md y result\.json/,/correlaciona.*llamada nativa/,/no reconstruyas ejecución, inventes aprobación/,/No hay parser por encabezados/])assert.match(body,clause);
-  assert.match(body,/integra lo disjunto, reconcilia lo afectado/);
+  const delegation=fs.readFileSync(path.join(root,'templates/delegation.md'),'utf8');
+  const docs=fs.readFileSync(path.join(root,'docs/ORCHESTRATION.md'),'utf8');
+  for(const heading of ['Objetivo','Contexto y referencias','Alcance y restricciones','Criterios de aceptación','Entrega esperada'])assert.ok(delegation.includes(`## ${heading}`),`falta sección de entrada ${heading}`);
+  const specialists=JSON.parse(fs.readFileSync(path.join(root,'agents/catalog.json'),'utf8')).specialists;
+  for(const {id} of specialists){
+    const composed=native.get(`.opencode/agents/${id}.md`);
+    for(const heading of ['Resultado','Evidencia y comprobaciones','Pendientes y límites'])assert.ok(composed.includes(`## ${heading}`),`${id} no recibe ## ${heading}`);
+    assert.match(composed,/estado declarado/ ,`${id} no recibe el contrato común de respuesta`);
+  }
+  for(const clause of [/Markdown normal/,/cinco encabezados.*en ese orden/,/No añade parser ni protocolo runtime/,/completed.*estado declarado.*aceptación/,/parece truncado/,/No reinicies el trabajo ni inventes evidencia/,/correlaciona con la llamada nativa/,/autoinforme no prueba ejecución/,/revisión avanzó.*compara scopes, contratos, decisiones y base.*integra lo disjunto.*sin sobrescribir cambios posteriores/,/Work requiere evidencia.*ruta Markdown.*writeScope.*archivos fingerprintables.*históricas.*código como sustituto del report/,/No exijas JSON/,/plantillas de documentos persistentes/])assert.match(body,clause);
+  assert.match(docs,/Entrada de Sol → especialista/);
+  assert.match(docs,/Respuesta especialista → Sol/);
 });
 
 test('recuperación distingue capacidad, denegación, contrato y efecto incierto',()=>{

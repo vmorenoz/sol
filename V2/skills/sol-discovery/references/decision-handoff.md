@@ -2,6 +2,8 @@
 
 Usa formatos canónicos existentes: `decision.md`, `spec.md`, `plan.md` y Work. No crees un shadow log Markdown/JSON. Un informe research puede proponer; la decisión no cambia de estado hasta que la herramienta/contrato canónico la registre.
 
+El handoff de investigación es proporcional: comparte la respuesta condicionada, fuentes que soportan cada afirmación decisiva, discrepancias/límites y únicamente la pregunta material que corresponde a una persona. Hechos investigables no se convierten en preguntas al usuario. No repitas en research el PRD/SPEC, plan, tasks ni estado ya canónico; el Markdown es orientación, no mutación de metadata.
+
 ## Resumen para la conversación y siguiente especialista
 
 ```text

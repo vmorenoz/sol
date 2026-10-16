@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const read=relative=>fs.readFileSync(path.join(root,relative),'utf8');
 const skills=['sol-new-project','sol-onboard','sol-discuss','sol-plan','sol-execute','sol-verify','sol-ship','sol-discovery'];
-const discoveryRefs=['interview-lenses.md','evidence-triage.md','rich-questions.md','adaptive-dialogue.md','decision-handoff.md','sufficiency.md','context-map.md','capability-selection.md'];
+const discoveryRefs=['interview-lenses.md','evidence-triage.md','rich-questions.md','adaptive-dialogue.md','decision-handoff.md','sufficiency.md','context-map.md','capability-selection.md','research-method.md'];
 
 function frontmatter(source){return source.match(/^---\n([\s\S]*?)\n---\n/)?.[1]??'';}
 
@@ -34,6 +34,8 @@ test('el índice de discovery carga referencias selectivamente y el grafo local 
     assert.ok(body.length>700,`${ref} debe contener procedimiento desarrollado`);
     assert.match(body,/refs@1/);
   }
+  assert.ok(index.includes('references/UPSTREAM-NOTICE.md'));
+  assert.ok(read('skills/sol-discovery/references/UPSTREAM-NOTICE.md').includes('MIT License'));
   const ship=read('skills/sol-ship/SKILL.md');
   assert.deepEqual([...ship.matchAll(/references\/([a-z0-9-]+\.md)/g)].map(match=>match[1]),['preflight-and-authorization.md']);
   assert.ok(ship.includes('references/preflight-and-authorization.md'));
@@ -97,7 +99,7 @@ test('plantillas permiten trazabilidad y procedencia sin reemplazar metadata can
   const research=read('templates/research.md');
   const spec=read('templates/spec.md');
   const plan=read('templates/plan.md');
-  assert.match(research,/fuente exacta/);
+  assert.match(research,/fuente y sección\/ruta concreta/);
   assert.match(research,/recomendación condicional/);
   assert.match(research,/Sin cuotas, puntuaciones/);
   assert.match(spec,/confirmada\/propuesta\/abierta/i);

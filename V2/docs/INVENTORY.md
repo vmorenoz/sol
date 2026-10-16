@@ -47,7 +47,7 @@ Las diez skills de workflow se conservan y Sol las carga con la herramienta nati
 - `sol-status` y `sol-recap`: consultas de solo lectura
 - `sol-resume`: continuación solicitada sin reiniciar fases
 
-No se exponen como comandos de workflow ni se deshabilita su carga por el modelo. `sol-discovery` y `sol-integration-verification` siguen siendo guías auxiliares. El usuario conversa con Sol; no tiene que elegir una skill ni invocar el siguiente paso. Las skills no conceden autorización y no existe auto-init por encargo ordinario.
+No se exponen como comandos de workflow ni se deshabilita su carga por el modelo. `sol-discovery`, `sol-integration-verification` y `sol-engineering-practices` son guías auxiliares. Engineering Practices agrupa referencias temáticas bajo demanda; no añade router, agente, permiso ni workflow. Su mapa `references/upstream-map.json` registra las 25 decisiones frente a Addy Osmani/agent-skills SHA `aeac41d4d005999432bb7312f7ff06383a91d59d`; el aviso MIT íntegro está en `references/UPSTREAM-NOTICE.md`, dentro del payload de la skill. Research se refuerza separadamente en `sol-discovery`. El usuario conversa con Sol; no tiene que elegir una skill ni invocar el siguiente paso. Las skills no conceden autorización y no existe auto-init por encargo ordinario.
 
 En upgrades se retiran dispatchers obsoletos acreditados por el manifest de Sol, con respaldo recuperable. Comandos ajenos o compartidos se conservan; una colisión no acreditada se informa sin borrarla. Reinicia OpenCode después de actualizar para cargar los recursos nuevos.
 

@@ -40,6 +40,21 @@ test('tarball aislado instala sus recursos y ejerce el plugin sobre dos raíces 
   install({homeDir:home,env:{},probeVersion:()=> 'opencode v2.0.20'});
   const packagedSkills=filesUnder(path.join(packageRoot,'skills'));
   for(const relative of packagedSkills)assert.ok(fs.existsSync(path.join(home,'.config/opencode/skills',relative)),`falta skill/recurso instalado ${relative}`);
+  for(const relative of packagedSkills.filter(file=>file.startsWith('sol-engineering-practices/'))){
+    assert.deepEqual(fs.readFileSync(path.join(home,'.config/opencode/skills',relative)),fs.readFileSync(path.join(packageRoot,'skills',relative)),`byte drift al instalar ${relative}`);
+  }
+  const sourceMap=JSON.parse(fs.readFileSync(path.join(packageRoot,'skills/sol-engineering-practices/references/upstream-map.json'),'utf8'));
+  assert.equal(sourceMap.destinationBase,'skill-root');
+  const installedSkillRoot=path.join(home,'.config/opencode/skills/sol-engineering-practices');
+  for(const entry of sourceMap.skills)for(const destination of entry.destinations){
+    const installed=path.resolve(installedSkillRoot,destination);assert.ok(installed.startsWith(path.join(home,'.config/opencode')+path.sep),`${entry.source} escape instalado`);
+    if(!fs.existsSync(installed))assert.ok(entry.decision==='research-owned'&&destination==='../../skills/sol-discovery/references/research-method.md',`${entry.source}: destino instalado ausente: ${destination}`);
+  }
+  const engineeringNotice=path.join(home,'.config/opencode/skills/sol-engineering-practices/references/UPSTREAM-NOTICE.md');
+  assert.ok(fs.statSync(engineeringNotice).isFile(),'el aviso de licencia debe llegar al skill instalado');
+  const notice=fs.readFileSync(engineeringNotice,'utf8');assert.match(notice,/Copyright \(c\) 2025 Addy Osmani/);assert.match(notice,/Permission is hereby granted/);assert.match(notice,/THE SOFTWARE IS PROVIDED "AS IS"/);
+  const discoveryNotice=fs.readFileSync(path.join(home,'.config/opencode/skills/sol-discovery/references/UPSTREAM-NOTICE.md'),'utf8');assert.match(discoveryNotice,/Copyright \(c\) 2025 Addy Osmani/);assert.match(discoveryNotice,/Permission is hereby granted/);assert.match(discoveryNotice,/THE SOFTWARE IS PROVIDED "AS IS"/);
+  for(const relative of ['SKILL.md','references/upstream-map.json','references/implementation.md','references/debugging.md','references/testing.md','references/contracts-migrations.md','references/review.md','references/security.md','references/frontend.md','references/operations.md','references/automation-docs.md','references/delivery.md'])assert.ok(fs.statSync(path.join(home,'.config/opencode/skills/sol-engineering-practices',relative)).isFile(),relative);
   for(const relative of ['contracts.mjs','artifacts.mjs','work-mutations.mjs','schema.mjs','fs.mjs','shipping.mjs','shipping-snapshot.mjs','shipping-authority.mjs'])assert.ok(fs.existsSync(path.join(home,'.sol/lib',relative)),relative);
   for(const relative of filesUnder(path.join(packageRoot,'schemas')))assert.ok(fs.existsSync(path.join(home,'.sol/schemas',relative)),relative);
   assert.equal(fs.existsSync(path.join(home,'.config/opencode/commands/sol-init.md')),false,'sol-init usa la TUI directa');

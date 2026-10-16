@@ -1,18 +1,23 @@
 # Encargo para {{agente nativo exacto}}
 <!-- template: delegation.md@1.0 -->
 
-Guía de contenido para Markdown natural. Adapta estructura y extensión; no hay encabezados obligatorios, parser ni obligación de rellenar cada bloque. La conversación no requiere JSON ni un archivo adicional.
+Contrato de mensaje de Sol al especialista, en Markdown normal. Usa estos encabezados y orden; completa solo el contenido pertinente y mantén breves los encargos simples. No es un archivo que haya que crear, parser, payload JSON ni wrapper XML. Instrucciones comunes y deberes del rol ya están en el prompt del especialista: no los copies aquí.
 
-## Objetivo y contexto
-{{Qué resultado necesita Sol, por qué importa y cuál es el próximo paso que habilitará. Fuentes concretas, acuerdos relevantes, hallazgos anteriores y base observada, sin transcripciones completas.}}
+La sesión pertenece al encargo. Para cada encargo nuevo, llamar a subagent SIN sessionID, aunque coincidan especialista o Work, con handoff autosuficiente. Solo reutilizar el sessionID devuelto para aclarar/completar/corregir el mismo encargo aún no aceptado por Sol, con rol, scope y base compatibles. Un cambio de encargo o rol, o un scope/base incompatible, requiere sesión nueva. Toda auditoría independiente empieza limpia; el seguimiento compatible del mismo encargo auditor puede continuar hasta aceptación. Los reintentos técnicos/idempotentes del init conservan la identidad de su operación.
 
-## Alcance y aceptación
-{{Lecturas/escrituras autorizadas, exclusiones, resultado comprobable, decisiones pendientes que sí afectan este encargo, recursos compartidos y dependencias. Preferencias aplicables y origen.}}
+## Objetivo
+{{Resultado concreto y por qué importa. Añade el próximo paso que habilita si ayuda a delimitarlo.}}
 
-## Continuidad, si aplica
-{{Work/revisión/taskIds existentes y referencia del encargo nativo. No inventar metadata cuando el trabajo sea de sesión. La persistencia y los permisos son independientes: un cambio local explícitamente autorizado no exige preparar .sol. Si ya corresponde a un Work, conservar su registro.}}
+## Contexto y referencias
+{{Base, decisiones pertinentes, rutas/fuentes que el especialista debe leer y hallazgos previos relevantes. Enlaza/identifica con precisión; no pegues transcripciones ni el Work entero. IDs/revisión/taskIds solo si existen y son útiles.}}
+
+## Alcance y restricciones
+{{Lecturas permitidas/relevantes y escrituras autorizadas por separado; exclusiones, recursos compartidos, preferencias aplicables con su origen conocido y decisiones materiales pendientes. `writeScope` orienta conducta, no amplía permisos ni es sandbox del host.}}
+
+## Criterios de aceptación
+{{Conducta observable que permitirá a Sol juzgar esta tarea; incluye criterios/tareas existentes cuando corresponda. No conviertas completed del host en aceptación ni inventes aprobación del usuario.}}
 
 ## Entrega esperada
-{{Resultado/hallazgo primero, referencias y evidencia, cambios/comprobaciones si hubo, límites y siguiente paso habilitado. Se responde en Markdown. Si se pidió un artefacto o el Work requiere evidencia persistente, indicar plantilla, ruta única autorizada y writeScope desde el inicio; el mismo Markdown sirve como entrega/report de evidencia y el resumen lo enlaza. Sin Work puede bastar el mensaje. No exigir report.md + result.json ni secciones vacías.}}
+{{Qué resultado, referencias y comprobaciones hacen falta para esta tarea. La respuesta usa el contrato Markdown de agents/common.md; precisa particularidades del rol. Asigna un único Markdown/ruta/writeScope solo si se solicita un artefacto o el Work requiere evidencia persistente. No exigir result.json, reporte duplicado ni archivo por tarea.}}
 
-{{Para una entrega histórica asignar ruta única; una corrección enlaza la anterior sin sobrescribirla. Los archivos vivos conservan sus permisos. Sol verifica el resultado y registra metadata por tools; el especialista no cierra Work, no delega ni cambia permisos.}}
+{{Al continuar el mismo encargo aún no aceptado, aporta solo el faltante y conserva la sesión nativa compatible; un encargo nuevo usa sesión nueva. Si se asigna un documento histórico, acuerda una ruta única; la corrección enlaza la anterior y no la sobrescribe. La entrega no cierra el Work: Sol verifica y registra metadata por tools. Los documentos persistentes siguen sus propias plantillas flexibles.}}

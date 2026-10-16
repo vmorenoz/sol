@@ -13,6 +13,7 @@ Recurso de apoyo disponible al modelo (sin entrada slash). OpenCode lista metada
 | Elegir lentes para el encargo | `references/interview-lenses.md` |
 | Evaluar adaptación/confirmación redundante | `references/evaluation-cases.json` + refs `adaptive-dialogue.md`, `rich-questions.md`, `sufficiency.md` |
 | Triage de fuentes, confianza y ausencia | `references/evidence-triage.md` |
+| Método central de investigación trazable y suficiente | `references/research-method.md` |
 | Diseñar pregunta rica y alternativas | `references/rich-questions.md` |
 | Follow-up según respuesta real | `references/adaptive-dialogue.md` |
 | Decisiones y handoff a spec/plan | `references/decision-handoff.md` |
@@ -24,6 +25,8 @@ No crea modo separado, especialista de dominio obligatorio, cuota de preguntas n
 ## Modelo de trabajo
 
 Integra qué/por qué (problema, usuarios, resultado, alcance, exclusiones y aceptación) con cómo/viabilidad (estado del proyecto, opciones, restricciones, riesgos y evidencia). No impongas orden fijo: sigue la incertidumbre material siguiente. En un proyecto existente, usa código y documentos pertinentes; en uno nuevo, entiende necesidad y límites antes de sugerir stack o arquitectura. Si hay contexto de proyecto dentro de un repo existente, distingue ese caso de greenfield.
+
+Para una investigación, aplica `references/research-method.md` como método central: pregunta y suficiencia explícitas, subpreguntas adaptativas, fuentes inspeccionadas y citas precisas, contraevidencia, alternativas y conclusión condicionada. `references/UPSTREAM-NOTICE.md` registra procedencia/licencia, no es una guía de ejecución. Las referencias siguientes profundizan solo el aspecto pertinente; no son etapas ni una lista que haya que completar.
 
 ## Encontrar áreas grises
 
