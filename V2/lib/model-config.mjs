@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { parseJSONC, upsertJSONC, editJSONC } from './jsonc.mjs';
-import { safePath, atomicWrite } from './fs.mjs';
+import { safePath, atomicWrite, portableRelative } from './fs.mjs';
 import { SOL_AGENT_IDS, resolveModelAssignments, detectModelProfile } from './model-profiles.mjs';
 
 const MANIFEST = '.sol/installation.json';
@@ -12,15 +12,15 @@ const digest = value => crypto.createHash('sha256').update(value).digest('hex');
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 const idRE = /^sol(?:-[a-z0-9-]+)?$/;
 
-function resolvePaths(homeDir, env) {
-  const home = path.resolve(homeDir);
-  const configured = env.OPENCODE_CONFIG_DIR || (env.XDG_CONFIG_HOME ? path.join(env.XDG_CONFIG_HOME, 'opencode') : path.join(home, '.config', 'opencode'));
-  const root = path.resolve(configured), rel = path.relative(home, root);
-  if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) throw new Error('La configuración de OpenCode debe estar dentro de HOME; no se administrarán rutas externas.');
-  safePath(home, path.relative(home, path.join(root, 'opencode.jsonc')));
-  const configRelativePath = path.relative(home, path.join(root, 'opencode.jsonc')).split(path.sep).join('/');
-  return { home, root, configPath: path.join(root, 'opencode.jsonc'), configRelativePath,
-    jsonRel: path.relative(home, path.join(root, 'opencode.json')).split(path.sep).join('/') };
+export function resolveConfigPaths(homeDir, env, pathAPI = path) {
+  const home = pathAPI.resolve(homeDir);
+  const configured = env.OPENCODE_CONFIG_DIR || (env.XDG_CONFIG_HOME ? pathAPI.join(env.XDG_CONFIG_HOME, 'opencode') : pathAPI.join(home, '.config', 'opencode'));
+  const root = pathAPI.resolve(configured), rel = pathAPI.relative(home, root);
+  if (!rel || rel === '..' || rel.startsWith(`..${pathAPI.sep}`) || pathAPI.isAbsolute(rel)) throw new Error('La configuración de OpenCode debe estar dentro de HOME; no se administrarán rutas externas.');
+  const configRelativePath = portableRelative(home, pathAPI.join(root, 'opencode.jsonc'), pathAPI);
+  safePath(home, configRelativePath);
+  return { home, root, configPath: pathAPI.join(root, 'opencode.jsonc'), configRelativePath,
+    jsonRel: portableRelative(home, pathAPI.join(root, 'opencode.json'), pathAPI) };
 }
 function readBytes(home, relative) {
   const file = safePath(home, relative);
@@ -77,7 +77,7 @@ function mergeComplementaryJSONC(jsoncText, jsonText) {
   return upsertJSONC(jsoncText, additions);
 }
 function readConfig(options) {
-  const home = path.resolve(options.homeDir || os.homedir()), paths = resolvePaths(home, options.env || process.env);
+  const home = path.resolve(options.homeDir || os.homedir()), paths = resolveConfigPaths(home, options.env || process.env);
   const jsonc = readBytes(home, paths.configRelativePath), json = readBytes(home, paths.jsonRel);
   const overlay = relative => options.sourceTexts instanceof Map ? options.sourceTexts.get(relative) : options.sourceTexts?.[relative];
   if (jsonc && json && !options.mergeComplementary) throw new Error('Existen opencode.json y opencode.jsonc; la precedencia es ambigua. No se modificó ninguno.');

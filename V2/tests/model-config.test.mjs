@@ -4,12 +4,27 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { SOL_AGENT_IDS, resolveModelAssignments } from '../lib/model-profiles.mjs';
-import { readModelConfig, planModelConfig, applyModelConfig } from '../lib/model-config.mjs';
+import { readModelConfig, planModelConfig, applyModelConfig, resolveConfigPaths } from '../lib/model-config.mjs';
+import { safePath } from '../lib/fs.mjs';
 
 const catalog = [
   { providerID: 'openai', id: 'gpt-6.1-sol', enabled: true, status: 'active', variants: [{ id: 'medium' }, { id: 'high' }] },
   { providerID: 'openai', id: 'gpt-6-luna', enabled: true, status: 'active', variants: [{ id: 'medium' }, { id: 'high' }, { id: 'none' }] },
 ];
+test('model config paths are portable with Windows semantics and remain confined to HOME', () => {
+  const home = 'C:\\Users\\alice';
+  const defaultPaths = resolveConfigPaths(home, {}, path.win32);
+  assert.equal(defaultPaths.root, 'C:\\Users\\alice\\.config\\opencode');
+  assert.equal(defaultPaths.configRelativePath, '.config/opencode/opencode.jsonc');
+  assert.equal(defaultPaths.jsonRel, '.config/opencode/opencode.json');
+  const configuredPaths = resolveConfigPaths(home, { OPENCODE_CONFIG_DIR: 'C:\\Users\\alice\\settings\\oc' }, path.win32);
+  assert.equal(configuredPaths.configRelativePath, 'settings/oc/opencode.jsonc');
+  const xdgPaths = resolveConfigPaths(home, { XDG_CONFIG_HOME: 'C:\\Users\\alice\\xdg' }, path.win32);
+  assert.equal(xdgPaths.configRelativePath, 'xdg/opencode/opencode.jsonc');
+  assert.throws(() => resolveConfigPaths(home, { OPENCODE_CONFIG_DIR: 'C:\\Users\\bob\\oc' }, path.win32), /dentro de HOME/);
+  assert.throws(() => resolveConfigPaths(home, { OPENCODE_CONFIG_DIR: 'D:\\OpenCode' }, path.win32), /dentro de HOME/);
+  assert.throws(() => safePath(home, 'C:/outside/file'), /Ruta relativa inválida/);
+});
 function fixture(config = null, extra = {}) {
   const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sol-model-test-'));
   const root = path.join(homeDir, '.config', 'opencode'); fs.mkdirSync(root, { recursive: true });
